@@ -1,4 +1,4 @@
-package checkerlution
+package checkersbot
 
 type User struct {
 	Id         string `json:"_id"`

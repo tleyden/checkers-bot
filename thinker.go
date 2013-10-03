@@ -1,4 +1,4 @@
-package checkerlution
+package checkersbot
 
 type Thinker interface {
 	Start(ourTeamId int)

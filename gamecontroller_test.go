@@ -1,4 +1,4 @@
-package checkerlution
+package checkersbot
 
 import (
 	"encoding/json"
