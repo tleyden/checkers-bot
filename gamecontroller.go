@@ -29,8 +29,8 @@ type Game struct {
 
 type Changes map[string]interface{}
 
-func NewGame(ourTeamId int) *Game {
-	game := &Game{ourTeamId: ourTeamId}
+func NewGame(ourTeamId int, thinker Thinker) *Game {
+	game := &Game{ourTeamId: ourTeamId, thinker: thinker}
 	return game
 }
 
@@ -82,8 +82,6 @@ func (game *Game) handleChanges(changes Changes) {
 }
 
 func (game *Game) InitGame() {
-
-	game.thinker = &RandomThinker{}
 
 	game.thinker.Start(game.ourTeamId)
 	game.InitDbConnection()
