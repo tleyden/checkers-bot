@@ -83,8 +83,7 @@ func (game *Game) handleChanges(changes Changes) {
 
 func (game *Game) InitGame() {
 
-	game.thinker = &Checkerlution{}
-	// game.thinker = &RandomThinker{}
+	game.thinker = &RandomThinker{}
 
 	game.thinker.Start(game.ourTeamId)
 	game.InitDbConnection()
