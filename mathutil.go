@@ -5,7 +5,7 @@ import (
 	"math/rand"
 )
 
-func randomIntInRange(min, max int) int {
+func RandomIntInRange(min, max int) int {
 	if min == max {
 		logg.Log("warn: min==max (%v == %v)", min, max)
 		return min
