@@ -82,8 +82,6 @@ func (game *Game) handleChanges(changes Changes) {
 }
 
 func (game *Game) InitGame() {
-
-	game.thinker.Start(game.ourTeamId)
 	game.InitDbConnection()
 	game.CreateRemoteUser()
 }
