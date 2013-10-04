@@ -9,6 +9,7 @@ import (
 type GameState struct {
 	Teams        []Team `json:"teams"`
 	ActiveTeam   int    `json:"activeTeam"`
+	WinningTeam  int    `json:"winningTeam"`
 	Number       int    `json:"number"`
 	Turn         int    `json:"turn"`
 	MoveInterval int    `json:"moveInterval"`
