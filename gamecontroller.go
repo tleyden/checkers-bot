@@ -20,11 +20,12 @@ const (
 )
 
 type Game struct {
-	thinker   Thinker
-	gameState GameState
-	ourTeamId int
-	db        couch.Database
-	user      User
+	thinker         Thinker
+	gameState       GameState
+	ourTeamId       int
+	db              couch.Database
+	user            User
+	delayBeforeMove bool
 }
 
 type Changes map[string]interface{}
@@ -186,6 +187,10 @@ func (game *Game) PostChosenMove(validMove ValidMove) {
 
 }
 
+func (game *Game) SetDelayBeforeMove(delayBeforeMove bool) {
+	game.delayBeforeMove = delayBeforeMove
+}
+
 // Update the game.user object so it has the current game number.
 // It does it every time we get a new gamestate document, since
 // it can change any time.
@@ -256,15 +261,18 @@ func getNextSinceValue(curSinceValue string, changes Changes) string {
 	return curSinceValue
 }
 
-func (game *Game) calculatePreMoveSleepSeconds() float64 {
+func (game *Game) calculatePreMoveSleepSeconds() (delay float64) {
+	delay = 0
+	if game.delayBeforeMove {
+		// we don't want to make a move "too soon", so lets
+		// cap the minimum amount we sleep at 10% of the move interval
+		minSleep := float64(game.gameState.MoveInterval) * 0.10
 
-	// we don't want to make a move "too soon", so lets
-	// cap the minimum amount we sleep at 10% of the move interval
-	minSleep := float64(game.gameState.MoveInterval) * 0.10
+		// likewise, don't want to cut it to close to the timeout
+		maxSleep := float64(game.gameState.MoveInterval) * 0.90
 
-	// likewise, don't want to cut it to close to the timeout
-	maxSleep := float64(game.gameState.MoveInterval) * 0.90
+		delay = randomInRange(minSleep, maxSleep)
 
-	return randomInRange(minSleep, maxSleep)
-
+	}
+	return
 }
