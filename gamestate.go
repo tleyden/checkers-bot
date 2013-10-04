@@ -18,6 +18,7 @@ type GameState struct {
 func NewGameStateFromString(jsonString string) GameState {
 	gameState := &GameState{}
 
+	// TODO: fix this hack
 	// Hack alert!  what is a cleaner way to deal with
 	// the issue where the json sometimes contains a winningTeam
 	// int field?  How do I distinguish between an actual 0

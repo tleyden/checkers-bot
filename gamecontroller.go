@@ -238,6 +238,14 @@ func (game Game) hasGameDocChanged(changes Changes) bool {
 
 func (game Game) fetchLatestGameState() (gameState GameState, err error) {
 	gameStateFetched := &GameState{}
+
+	// TODO: fix this hack
+	// Hack alert!  what is a cleaner way to deal with
+	// the issue where the json sometimes contains a winningTeam
+	// int field?  How do I distinguish between an actual 0
+	// vs a null/missing value?
+	gameStateFetched.WinningTeam = -1
+
 	err = game.db.Retrieve(GAME_DOC_ID, gameStateFetched)
 	if err == nil {
 		gameState = *gameStateFetched
