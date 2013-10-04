@@ -17,6 +17,13 @@ type GameState struct {
 
 func NewGameStateFromString(jsonString string) GameState {
 	gameState := &GameState{}
+
+	// Hack alert!  what is a cleaner way to deal with
+	// the issue where the json sometimes contains a winningTeam
+	// int field?  How do I distinguish between an actual 0
+	// vs a null/missing value?
+	gameState.WinningTeam = -1
+
 	jsonBytes := []byte(jsonString)
 	err := json.Unmarshal(jsonBytes, gameState)
 	if err != nil {

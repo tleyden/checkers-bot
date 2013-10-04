@@ -55,12 +55,9 @@ func (game *Game) GameLoop() {
 
 }
 
-// - make sure one of the changes is a game, if not, ignore it
-// - get the latest game document
-// - if it's not our turn, do nothing
-// - if it is our turn
-//   - call thinker to calculate next move
-//   - make next move by inserting a new revision of votes doc
+// Given a list of changes, we only care if the game doc has changed.
+// If it has changed, and it's our turn to make a move, then call
+// the embedded Thinker to make a move or abort the game.
 func (game *Game) handleChanges(changes Changes) {
 	gameDocChanged := game.hasGameDocChanged(changes)
 	if gameDocChanged {
@@ -69,16 +66,41 @@ func (game *Game) handleChanges(changes Changes) {
 			logg.LogError(err)
 			return
 		}
+
+		if game.thinkerWantsToQuit(gameState) {
+			msg := "Poor man's way to break out of loop"
+			panic(msg)
+		}
+
 		game.updateUserGameNumber(gameState)
 		game.gameState = gameState
+
 		if isOurTurn := game.isOurTurn(gameState); !isOurTurn {
 			logg.LogTo("DEBUG", "It's not our turn, ignoring changes")
 			return
 		}
+
 		bestMove := game.thinker.Think(gameState)
 		game.PostChosenMove(bestMove)
 
 	}
+}
+
+func (game Game) thinkerWantsToQuit(gameState GameState) (shouldQuit bool) {
+	shouldQuit = false
+	if game.finished(gameState) {
+		if observer, ok := game.thinker.(Observer); ok {
+			shouldQuit = observer.GameFinished(gameState)
+			return
+		}
+	}
+	return
+}
+
+func (game Game) finished(gameState GameState) bool {
+	isNewGame := (gameState.Number != game.gameState.Number)
+	gameHasWinner := (gameState.WinningTeam != -1)
+	return gameHasWinner && isNewGame
 }
 
 func (game *Game) InitGame() {
@@ -155,6 +177,9 @@ func (game *Game) PostChosenMove(validMove ValidMove) {
 
 }
 
+// Update the game.user object so it has the current game number.
+// It does it every time we get a new gamestate document, since
+// it can change any time.
 func (game *Game) updateUserGameNumber(gameState GameState) {
 	gameNumberChanged := (game.gameState.Number != gameState.Number)
 	if gameNumberChanged {
