@@ -1,5 +1,5 @@
 package checkersbot
 
 type Thinker interface {
-	Think(gameState GameState) ValidMove
+	Think(gameState GameState) (validMove ValidMove, ok bool)
 }

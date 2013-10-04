@@ -89,8 +89,10 @@ func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
 			return
 		}
 
-		bestMove := game.thinker.Think(gameState)
-		game.PostChosenMove(bestMove)
+		bestMove, ok := game.thinker.Think(gameState)
+		if ok {
+			game.PostChosenMove(bestMove)
+		}
 
 	}
 	return
@@ -101,16 +103,22 @@ func (game Game) thinkerWantsToQuit(gameState GameState) (shouldQuit bool) {
 	if game.finished(gameState) {
 		if observer, ok := game.thinker.(Observer); ok {
 			shouldQuit = observer.GameFinished(gameState)
+			logg.LogTo("DEBUG", "observer returned shouldQuit: %v", shouldQuit)
 			return
+		} else {
+			logg.LogTo("DEBUG", "thinker is not an Observer, not calling GameFinished")
 		}
+
 	}
 	return
 }
 
 func (game Game) finished(gameState GameState) bool {
-	isNewGame := (gameState.Number != game.gameState.Number)
+	logg.LogTo("DEBUG", "game.finished() called")
 	gameHasWinner := (gameState.WinningTeam != -1)
-	return gameHasWinner && isNewGame
+	finished := gameHasWinner
+	logg.LogTo("DEBUG", "game.finished() returning: %v", finished)
+	return finished
 }
 
 func (game *Game) InitGame() {
