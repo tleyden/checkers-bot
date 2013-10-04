@@ -45,7 +45,6 @@ func TestFinished(t *testing.T) {
 	// change struct such that it's in the finished state
 	gameStatePrime := gameState
 	gameStatePrime.WinningTeam = BLUE_TEAM
-	gameStatePrime.Number = gameState.Number + 1
 
 	result := game.finished(gameStatePrime)
 	assert.True(t, result)
