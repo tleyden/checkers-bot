@@ -44,10 +44,14 @@ func (game *Game) GameLoop() {
 
 	handleChange := func(reader io.Reader) string {
 		changes := decodeChanges(reader)
-		game.handleChanges(changes)
-		curSinceValue = calculateNextSinceValue(curSinceValue, changes)
-		time.Sleep(time.Second * 5)
-		return curSinceValue
+		shouldQuit := game.handleChanges(changes)
+		if shouldQuit {
+			return "-1" // causes Changes() to return
+		} else {
+			curSinceValue = getNextSinceValue(curSinceValue, changes)
+			time.Sleep(time.Second * 5)
+			return curSinceValue
+		}
 	}
 
 	options := Changes{"since": "0"}
@@ -58,18 +62,22 @@ func (game *Game) GameLoop() {
 // Given a list of changes, we only care if the game doc has changed.
 // If it has changed, and it's our turn to make a move, then call
 // the embedded Thinker to make a move or abort the game.
-func (game *Game) handleChanges(changes Changes) {
+func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
+	shouldQuit = false
 	gameDocChanged := game.hasGameDocChanged(changes)
 	if gameDocChanged {
 		gameState, err := game.fetchLatestGameState()
 		if err != nil {
 			logg.LogError(err)
+			shouldQuit = true
 			return
 		}
 
 		if game.thinkerWantsToQuit(gameState) {
-			msg := "Poor man's way to break out of loop"
-			panic(msg)
+			msg := "Thinker wants to quit the game loop now"
+			logg.LogTo("MAIN", msg)
+			shouldQuit = true
+			return
 		}
 
 		game.updateUserGameNumber(gameState)
@@ -84,6 +92,7 @@ func (game *Game) handleChanges(changes Changes) {
 		game.PostChosenMove(bestMove)
 
 	}
+	return
 }
 
 func (game Game) thinkerWantsToQuit(gameState GameState) (shouldQuit bool) {
@@ -238,7 +247,7 @@ func decodeChanges(reader io.Reader) Changes {
 	return changes
 }
 
-func calculateNextSinceValue(curSinceValue string, changes Changes) string {
+func getNextSinceValue(curSinceValue string, changes Changes) string {
 	lastSeq := changes["last_seq"]
 	lastSeqAsString := lastSeq.(string)
 	if lastSeq != nil && len(lastSeqAsString) > 0 {
