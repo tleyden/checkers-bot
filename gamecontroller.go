@@ -55,7 +55,7 @@ func (game *Game) GameLoop() {
 		}
 	}
 
-	options := Changes{"since": "0"}
+	options := Changes{"since": curSinceValue}
 	game.db.Changes(handleChange, options)
 
 }
@@ -74,15 +74,15 @@ func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
 			return
 		}
 
+		game.updateUserGameNumber(gameState)
+		game.gameState = gameState
+
 		if game.thinkerWantsToQuit(gameState) {
 			msg := "Thinker wants to quit the game loop now"
 			logg.LogTo("MAIN", msg)
 			shouldQuit = true
 			return
 		}
-
-		game.updateUserGameNumber(gameState)
-		game.gameState = gameState
 
 		if isOurTurn := game.isOurTurn(gameState); !isOurTurn {
 			logg.LogTo("DEBUG", "It's not our turn, ignoring changes")
@@ -289,6 +289,49 @@ func (game *Game) calculatePreMoveSleepSeconds() (delay float64) {
 
 		delay = randomInRange(minSleep, maxSleep)
 
+	}
+	return
+}
+
+// Wait until the game number increments
+func (game *Game) WaitForNextGame() {
+
+	curSinceValue := "0"
+
+	handleChange := func(reader io.Reader) string {
+		changes := decodeChanges(reader)
+		shouldQuit := game.handleChangesWaitForNextGame(changes)
+		if shouldQuit {
+			return "-1" // causes Changes() to return
+		} else {
+			curSinceValue = getNextSinceValue(curSinceValue, changes)
+			time.Sleep(time.Second * 5)
+			return curSinceValue
+		}
+
+	}
+
+	options := Changes{"since": curSinceValue}
+	game.db.Changes(handleChange, options)
+
+}
+
+// Follow the changes feed and wait until the game number
+// increments
+func (game *Game) handleChangesWaitForNextGame(changes Changes) (shouldQuit bool) {
+	shouldQuit = false
+	gameDocChanged := game.hasGameDocChanged(changes)
+	if gameDocChanged {
+		gameState, err := game.fetchLatestGameState()
+		if err != nil {
+			logg.LogError(err)
+			return
+		}
+		if gameState.Number != game.gameState.Number {
+			// game number changed, we're done
+			shouldQuit = true
+		}
+		game.gameState = gameState
 	}
 	return
 }
