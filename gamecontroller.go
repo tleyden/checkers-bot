@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	SERVER_URL   = "http://localhost:4984/checkers"
-	GAME_DOC_ID  = "game:checkers"
-	VOTES_DOC_ID = "votes:checkers"
-	RED_TEAM     = 0
-	BLUE_TEAM    = 1
+	DEFAULT_SERVER_URL = "http://localhost:4984/checkers"
+	GAME_DOC_ID        = "game:checkers"
+	VOTES_DOC_ID       = "votes:checkers"
+	RED_TEAM           = 0
+	BLUE_TEAM          = 1
 )
 
 type Game struct {
@@ -26,6 +26,7 @@ type Game struct {
 	db              couch.Database
 	user            User
 	delayBeforeMove bool
+	serverUrl       *string
 }
 
 type Changes map[string]interface{}
@@ -146,11 +147,20 @@ func (game *Game) CreateRemoteUser() {
 }
 
 func (game *Game) InitDbConnection() {
-	db, error := couch.Connect(SERVER_URL)
+	serverUrl := game.ServerUrl()
+	db, error := couch.Connect(serverUrl)
 	if error != nil {
-		logg.LogPanic("Error connecting to %v: %v", SERVER_URL, error)
+		logg.LogPanic("Error connecting to %v: %v", serverUrl, error)
 	}
 	game.db = db
+}
+
+func (game *Game) ServerUrl() string {
+	serverUrl := DEFAULT_SERVER_URL
+	if game.serverUrl != nil {
+		serverUrl = *game.serverUrl
+	}
+	return serverUrl
 }
 
 func (game *Game) PostChosenMove(validMove ValidMove) {
