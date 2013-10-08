@@ -26,7 +26,7 @@ type Game struct {
 	db              couch.Database
 	user            User
 	delayBeforeMove bool
-	serverUrl       *string
+	serverUrl       string
 }
 
 type Changes map[string]interface{}
@@ -157,10 +157,14 @@ func (game *Game) InitDbConnection() {
 
 func (game *Game) ServerUrl() string {
 	serverUrl := DEFAULT_SERVER_URL
-	if game.serverUrl != nil {
-		serverUrl = *game.serverUrl
+	if game.serverUrl != "" {
+		serverUrl = game.serverUrl
 	}
 	return serverUrl
+}
+
+func (game *Game) SetServerUrl(serverUrl string) {
+	game.serverUrl = serverUrl
 }
 
 func (game *Game) PostChosenMove(validMove ValidMove) {
