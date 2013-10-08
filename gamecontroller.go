@@ -173,7 +173,7 @@ func (game *Game) PostChosenMove(validMove ValidMove) {
 	}
 
 	votes := &OutgoingVotes{}
-	votes.Id = fmt.Sprintf("vote:%s", u4)
+	votes.Id = fmt.Sprintf("vote:%s", u4) // <-- should be user id!!!
 	votes.Turn = game.gameState.Turn
 	votes.PieceId = validMove.PieceId
 	votes.TeamId = game.ourTeamId
@@ -251,7 +251,7 @@ func (game Game) fetchLatestGameState() (gameState GameState, err error) {
 	// Hack alert!  what is a cleaner way to deal with
 	// the issue where the json sometimes contains a winningTeam
 	// int field?  How do I distinguish between an actual 0
-	// vs a null/missing value?
+	// vs a null/missing value?  One way: use a pointer
 	gameStateFetched.WinningTeam = -1
 
 	err = game.db.Retrieve(GAME_DOC_ID, gameStateFetched)
