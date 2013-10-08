@@ -10,7 +10,8 @@ import (
 
 func init() {
 
-	logg.LogKeys["NODE_SEND"] = true
+	logg.LogKeys["NODE_PRE_SEND"] = true
+	logg.LogKeys["NODE_POST_SEND"] = true
 	logg.LogKeys["NODE_RECV"] = true
 	logg.LogKeys["TEST"] = true
 	logg.LogKeys["DEBUG"] = true
