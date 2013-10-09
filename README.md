@@ -1,73 +1,60 @@
-[![Build Status](https://drone.io/github.com/tleyden/checkerlution/status.png)](https://drone.io/github.com/tleyden/checkerlution/latest)
 
+A checkers bot framework which makes it easy to build a checkers bot which can connect to a [Checkers Overlord](https://github.com/apage43/checkers-overlord).  This was built as a demonstration app for the [Couchbase Lite](http://www.couchbase.com/communities/couchbase-lite) NoSQL Mobile database.
 
-A "checkers bot" which connects to a [Checkers Overlord](https://github.com/apage43/checkers-overlord) server and uses [neurgo](https://github.com/tleyden/neurgo) to do it's thinking (or lack thereof).
+Here is a screenshot of what the [Checkers-iOS](https://github.com/couchbaselabs/Checkers-iOS) app looks like.  
 
 ![screenshot](http://cl.ly/image/1w423h062S1d/Screen%20Shot%202013-09-25%20at%2012.46.27%20AM.png)
 
 # Architecture
 
-![architecture png](http://cl.ly/image/3v3N2G3X192h/architecture.png)
+![architecture png](http://cl.ly/image/051o132q3K06/Screen%20Shot%202013-10-08%20at%2010.28.43%20PM.png)
 
-# Install pre-requisites
+# Bot implementations
 
-* Go 1.1 or later
+* [Random Bot](https://github.com/tleyden/checkers-bot-random)
+* [Checkerlution](https://github.com/tleyden/checkerlution)
 
-# Install checkerlution
-
-```
-$ go get github.com/tleyden/checkerlution
-$ go get github.com/couchbaselabs/go.assert
-```
-# Validate installation - run tests
+# Sample code for implementing a bot
 
 ```
-$ cd $GOPATH/github.com/tleyden/checkerlution
-$ go test -v
+type RandomThinker struct {
+        ourTeamId int
+}
+
+func (r RandomThinker) Think(gameState cbot.GameState) (bestMove cbot.ValidMove, ok bool) {
+
+        ok = true
+        ourTeam := gameState.Teams[r.ourTeamId]
+        allValidMoves := ourTeam.AllValidMoves()
+        if len(allValidMoves) > 0 {
+                randomValidMoveIndex := cbot.RandomIntInRange(0, len(allValidMoves))
+                bestMove = allValidMoves[randomValidMoveIndex]
+        } else {
+                ok = false
+        }
+
+        return
+}
+
+func (r RandomThinker) GameFinished(gameState cbot.GameState) (shouldQuit bool) {
+        shouldQuit = false
+        return
+}
+
+func main() {
+	thinker := &RandomThinker{}
+	thinker.ourTeamId = cbot.RED_TEAM
+	game := cbot.NewGame(thinker.ourTeamId, thinker)
+	game.SetServerUrl("http://localhost:4984/checkers")
+	game.GameLoop()
+}
+
+
 ```
 
-# Install Couchbase Server
+# Build your own Checkers Bot
 
-# Install [Sync Gateway](https://github.com/couchbase/sync_gateway)
+Make a copy of the [Random Bot](https://github.com/tleyden/checkers-bot-random) and use that as a starting point for building your own checkers bot.
 
-# Install [Checkers Overlord](https://github.com/apage43/checkers-overlord)
 
-# Install Checkers Lite
-
-Not strictly required, but very useful in order to view the game.
-
-The other way to install [Checkers-iOS](https://github.com/couchbaselabs/Checkers-iOS) from github.  Unfortunately it is a private repo at the time of this writing.  Contact [wacarter](https://github.com/wacarter) if you are interested in getting the source code.
-
-It can be installed for the [iTunes Store](https://itunes.apple.com/us/app/id698034787), however that version is only able to connect to the non-public production server.
-
-# Configure checkerlution
-
-Edit SERVER_URL in gamecontroller.go to point the Sync Gateway you want to test against.
-
-# Run checkerlution
-
-```
-$ cd $GOPATH/github.com/tleyden/checkerlution/main
-$ go run main.go
-```
-
-# How it's modeled
-
-* sensor1: game state array with 32 elements, each of which is:
-    * -1.0: opponent king
-    * -0.5: opponent piece
-    * 0 empty
-    * 0.5 our piece
-    * 1.0: our king
-
-* sensor2: an available move, which is: 
-    * start_location(normalized to be between -1 and 1)
-    * is_king(-1: false, 1: true)
-    * final_location(-1 and 1)
-    * will_be_king(-1: false, 1: true) 
-    * amt_would_capture(-1: none, 0: 1 piece, 1: 2 or more pieces)
-
-* actuator: outputs a scalar value representing the confidence in the available move
-
-There is a loop which presents each move to the network, and the move which has the highest confidence wins.
 
