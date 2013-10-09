@@ -1,11 +1,13 @@
 
+[![Build Status](https://drone.io/github.com/tleyden/checkers-bot/status.png)](https://drone.io/github.com/tleyden/checkers-bot/latest)
+
 A checkers bot framework which makes it easy to build a checkers bot which can connect to a [Checkers Overlord](https://github.com/apage43/checkers-overlord).  This was built as a demonstration app for the [Couchbase Lite](http://www.couchbase.com/communities/couchbase-lite) NoSQL Mobile database.
 
 Here is a screenshot of what the [Checkers-iOS](https://github.com/couchbaselabs/Checkers-iOS) app looks like.  
 
 ![screenshot](http://cl.ly/image/1w423h062S1d/Screen%20Shot%202013-09-25%20at%2012.46.27%20AM.png)
 
-# Architecture
+# Big Picture
 
 ![architecture png](http://cl.ly/image/051o132q3K06/Screen%20Shot%202013-10-08%20at%2010.28.43%20PM.png)
 
