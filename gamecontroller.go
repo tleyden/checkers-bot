@@ -181,13 +181,15 @@ func (game *Game) PostChosenMove(validMove ValidMove) {
 		logg.LogTo("MAIN", "invalid move, ignoring: %v", validMove)
 	}
 
-	u4, err := uuid.NewV4()
+	votes := &OutgoingVotes{}
+	votesId := fmt.Sprintf("vote:%s", game.user.Id)
+
+	err := game.db.Retrieve(votesId, votes)
 	if err != nil {
-		logg.LogPanic("Error generating uuid", err)
+		logg.LogTo("MAIN", "Unable to find existing vote doc: %v", votesId)
 	}
 
-	votes := &OutgoingVotes{}
-	votes.Id = fmt.Sprintf("vote:%s", u4) // <-- should be user id!!!
+	votes.Id = votesId
 	votes.Turn = game.gameState.Turn
 	votes.PieceId = validMove.PieceId
 	votes.TeamId = game.ourTeamId
