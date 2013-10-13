@@ -51,7 +51,7 @@ func (game *Game) GameLoop() {
 			return "-1" // causes Changes() to return
 		} else {
 			curSinceValue = getNextSinceValue(curSinceValue, changes)
-			time.Sleep(time.Second * 5)
+			time.Sleep(time.Second * 1)
 			return curSinceValue
 		}
 	}
@@ -92,7 +92,8 @@ func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
 
 		bestMove, ok := game.thinker.Think(gameState)
 		if ok {
-			game.PostChosenMove(bestMove)
+			outgoingVote := game.OutgoingVoteFromMove(bestMove)
+			game.PostChosenMove(outgoingVote)
 		}
 
 	}
@@ -167,21 +168,12 @@ func (game *Game) SetServerUrl(serverUrl string) {
 	game.serverUrl = serverUrl
 }
 
-func (game *Game) PostChosenMove(validMove ValidMove) {
+// Given a validmove (as chosen by the Thinker), create an "Outgoing Vote" that
+// can be passed to the server.  NOTE: the struct OutgoingVotes needs to be
+// renamed from plural to singular
+func (game *Game) OutgoingVoteFromMove(validMove ValidMove) (votes OutgoingVotes) {
 
-	logg.LogTo("MAIN", "post chosen move: %v", validMove)
-
-	preMoveSleepSeconds := game.calculatePreMoveSleepSeconds()
-
-	logg.LogTo("MAIN", "sleep %v (s) before posting move", preMoveSleepSeconds)
-
-	time.Sleep(time.Second * time.Duration(preMoveSleepSeconds))
-
-	if len(validMove.Locations) == 0 {
-		logg.LogTo("MAIN", "invalid move, ignoring: %v", validMove)
-	}
-
-	votes := &OutgoingVotes{}
+	votes = OutgoingVotes{}
 	votesId := fmt.Sprintf("vote:%s", game.user.Id)
 
 	err := game.db.Retrieve(votesId, votes)
@@ -195,11 +187,27 @@ func (game *Game) PostChosenMove(validMove ValidMove) {
 	votes.TeamId = game.ourTeamId
 	votes.GameId = game.gameState.Number
 
-	// TODO: this is actually a bug, because if there is a
-	// double jump it will only send the first jump move
-	endLocation := validMove.Locations[0]
-	locations := []int{validMove.StartLocation, endLocation}
+	locations := make([]int, len(validMove.Locations)+1)
+	locations[0] = validMove.StartLocation
+	copy(locations[1:], validMove.Locations)
+
 	votes.Locations = locations
+	return
+}
+
+func (game *Game) PostChosenMove(votes OutgoingVotes) {
+
+	logg.LogTo("MAIN", "post chosen move: %v", votes)
+
+	preMoveSleepSeconds := game.calculatePreMoveSleepSeconds()
+
+	logg.LogTo("MAIN", "sleep %v (s) before posting move", preMoveSleepSeconds)
+
+	time.Sleep(time.Second * time.Duration(preMoveSleepSeconds))
+
+	if len(votes.Locations) == 0 {
+		logg.LogTo("MAIN", "invalid move, ignoring: %v", votes)
+	}
 
 	newId, newRevision, err := game.db.Insert(votes)
 
@@ -221,6 +229,8 @@ func (game *Game) SetDelayBeforeMove(delayBeforeMove bool) {
 func (game *Game) updateUserGameNumber(gameState GameState) {
 	gameNumberChanged := (game.gameState.Number != gameState.Number)
 	if gameNumberChanged {
+		// TODO: getting 409 conflicts here, need to
+		// do a CAS loop
 		game.user.GameNumber = gameState.Number
 		newRevision, err := game.db.Edit(game.user)
 		if err != nil {

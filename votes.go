@@ -4,8 +4,8 @@ type OutgoingVotes struct {
 	Id        string                 `json:"_id"`
 	Rev       string                 `json:"_rev"`
 	Revisions map[string]interface{} `json:"_revisions"`
-	Channels  []interface{}          `json:"channels"`
-	Moves     []VoteMove             `json:"moves"`
+	Channels  []interface{}          `json:"channels"` // ??
+	Moves     []VoteMove             `json:"moves"`    // ??
 	TeamId    int                    `json:"team"`
 	GameId    int                    `json:"game"`
 	Count     int                    `json:"count"`

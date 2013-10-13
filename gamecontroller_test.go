@@ -68,6 +68,30 @@ func TestCheckGameDocInChanges(t *testing.T) {
 
 }
 
+func TestOutgoingVoteFromMove(t *testing.T) {
+	game := &Game{}
+
+	// simple case - single jump
+	validMove := ValidMove{
+		StartLocation: 5,
+		Locations:     []int{15},
+	}
+	outgoingVote := game.OutgoingVoteFromMove(validMove)
+	assert.Equals(t, outgoingVote.Locations[0], 5)
+	assert.Equals(t, outgoingVote.Locations[1], 15)
+
+	// double jump
+	validMove = ValidMove{
+		StartLocation: 5,
+		Locations:     []int{15, 20},
+	}
+	outgoingVote = game.OutgoingVoteFromMove(validMove)
+	assert.Equals(t, outgoingVote.Locations[0], 5)
+	assert.Equals(t, outgoingVote.Locations[1], 15)
+	assert.Equals(t, outgoingVote.Locations[2], 20)
+
+}
+
 func TestCalculatePreMoveSleepSeconds(t *testing.T) {
 	game := &Game{}
 	game.SetDelayBeforeMove(true)
