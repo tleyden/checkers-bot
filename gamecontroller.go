@@ -199,53 +199,6 @@ func (game *Game) OutgoingVoteFromMove(validMove ValidMove) (votes *OutgoingVote
 
 func (game *Game) PostChosenMove(votes *OutgoingVotes) {
 
-	/* BUG - 409 conflict: should be fixed in this commit.
-
-	GET /checkers/vote:user:9fdfb6c1-da1e-4ae7-4b3e-1d7ee2b4a62f HTTP/1.1.
-	Host: localhost:4984.
-	User-Agent: Go 1.1 package http.
-	Accept-Encoding: gzip.
-	.
-
-	##
-	T 127.0.0.1:4984 -> 127.0.0.1:56524 [AP]
-	HTTP/1.1 200 OK.
-	Content-Length: 203.
-	Content-Type: application/json.
-	Etag: 1-9525d7989cad21dfa6bcc1754e2d6eda.
-	Server: Couchbase Sync Gateway/0.79.
-	Date: Sun, 13 Oct 2013 01:02:34 GMT.
-	.
-	{"_id":"vote:user:9fdfb6c1-da1e-4ae7-4b3e-1d7ee2b4a62f","_rev":"1-9525d7989cad21dfa6bcc1754e2d6eda","channels":null,"count":0,"game":271917,"locations":[23,14],"moves":null,"piece":11,"team":1,"turn":24}
-	###########
-	T 127.0.0.1:56525 -> 127.0.0.1:4984 [AP]
-	PUT /checkers/vote:user:9fdfb6c1-da1e-4ae7-4b3e-1d7ee2b4a62f HTTP/1.1.
-	Host: localhost:4984.
-	User-Agent: Go 1.1 package http.
-	Connection: close.
-	Transfer-Encoding: chunked.
-	Content-Type: application/json.
-	.
-	79.
-	{"_revisions":null,"channels":null,"count":0,"game":271917,"locations":[14,7],"moves":null,"piece":11,"team":1,"turn":26}.
-	0.
-	.
-
-	##
-	T 127.0.0.1:4984 -> 127.0.0.1:56525 [AP]
-	HTTP/1.1 409 Conflict.
-	Content-Type: application/json.
-	Server: Couchbase Sync Gateway/0.79.
-	Content-Length: 47.
-	Connection: close.
-	Date: Sun, 13 Oct 2013 01:02:34 GMT.
-	.
-	{"error":"conflict","reason":"Document exists"}
-
-
-
-	*/
-
 	logg.LogTo("MAIN", "post chosen move: %v", votes)
 
 	preMoveSleepSeconds := game.calculatePreMoveSleepSeconds()
@@ -263,17 +216,11 @@ func (game *Game) PostChosenMove(votes *OutgoingVotes) {
 	var err error
 
 	if votes.Rev == "" {
-		logg.LogTo("MAIN", "votes.Rev is empty, going to insert")
 		newId, newRevision, err = game.db.Insert(votes)
-
 		logg.LogTo("MAIN", "newId: %v, newRevision: %v err: %v", newId, newRevision, err)
-
 	} else {
-		logg.LogTo("MAIN", "votes.Rev non empty, going to update")
 		newRevision, err = game.db.Edit(votes)
-
 		logg.LogTo("MAIN", "Id: %v, newRevision: %v err: %v", votes.Id, newRevision, err)
-
 	}
 
 	if err != nil {
