@@ -269,6 +269,9 @@ func (game Game) isOurTurn(gameState GameState) bool {
 func (game Game) hasGameDocChanged(changes Changes) bool {
 	foundGameDoc := false
 	changeResultsRaw := changes["results"]
+	if changeResultsRaw == nil {
+		return foundGameDoc
+	}
 	changeResults := changeResultsRaw.([]interface{})
 	for _, changeResultRaw := range changeResults {
 		changeResult := changeResultRaw.(map[string]interface{})
