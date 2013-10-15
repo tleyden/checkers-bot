@@ -336,10 +336,13 @@ func decodeChanges(reader io.Reader) Changes {
 
 func getNextSinceValue(curSinceValue string, changes Changes) string {
 	lastSeq := changes["last_seq"]
-	lastSeqAsString := lastSeq.(string)
-	if lastSeq != nil && len(lastSeqAsString) > 0 {
-		return lastSeqAsString
+	if lastSeq != nil {
+		lastSeqAsString := lastSeq.(string)
+		if len(lastSeqAsString) > 0 {
+			return lastSeqAsString
+		}
 	}
+
 	return curSinceValue
 }
 
