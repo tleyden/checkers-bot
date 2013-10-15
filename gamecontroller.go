@@ -155,7 +155,7 @@ func (game *Game) CreateRemoteUser() {
 		TeamId: game.ourTeamId,
 	}
 	newId, newRevision, err := game.db.Insert(user)
-	logg.LogTo("MAIN", "Inserted new user %v rev %v", newId, newRevision)
+	logg.LogTo("MAIN", "Created new user %v rev %v", newId, newRevision)
 
 	user.Rev = newRevision
 	game.user = *user
@@ -197,10 +197,10 @@ func (game *Game) OutgoingVoteFromMove(validMove ValidMove) (votes *OutgoingVote
 
 	err := game.db.Retrieve(votesId, votes)
 	if err != nil {
-		logg.LogTo("MAIN", "Unable to find existing vote doc: %v", votesId)
+		logg.LogTo("DEBUG", "Unable to find existing vote doc: %v", votesId)
 	}
 
-	logg.LogTo("MAIN", "GET votes, rev: %v", votes.Rev)
+	logg.LogTo("DEBUG", "GET votes, rev: %v", votes.Rev)
 
 	votes.Id = votesId
 	votes.Turn = game.gameState.Turn
@@ -218,11 +218,11 @@ func (game *Game) OutgoingVoteFromMove(validMove ValidMove) (votes *OutgoingVote
 
 func (game *Game) PostChosenMove(votes *OutgoingVotes) {
 
-	logg.LogTo("MAIN", "post chosen move: %v", votes)
+	logg.LogTo("DEBUG", "post chosen move: %v", votes)
 
 	preMoveSleepSeconds := game.calculatePreMoveSleepSeconds()
 
-	logg.LogTo("MAIN", "sleep %v (s) before posting move", preMoveSleepSeconds)
+	logg.LogTo("DEBUG", "sleep %v (s) before posting move", preMoveSleepSeconds)
 
 	time.Sleep(time.Second * time.Duration(preMoveSleepSeconds))
 
@@ -236,10 +236,10 @@ func (game *Game) PostChosenMove(votes *OutgoingVotes) {
 
 	if votes.Rev == "" {
 		newId, newRevision, err = game.db.Insert(votes)
-		logg.LogTo("MAIN", "newId: %v, newRevision: %v err: %v", newId, newRevision, err)
+		logg.LogTo("MAIN", "Sent vote with Id: %v, Revision: %v", newId, newRevision)
 	} else {
 		newRevision, err = game.db.Edit(votes)
-		logg.LogTo("MAIN", "Id: %v, newRevision: %v err: %v", votes.Id, newRevision, err)
+		logg.LogTo("MAIN", "Sent vote with Id: %v, Revision: %v", votes.Id, newRevision)
 	}
 
 	if err != nil {
@@ -267,7 +267,7 @@ func (game *Game) updateUserGameNumber(gameState GameState) {
 			logg.LogError(err)
 			return
 		}
-		logg.LogTo("MAIN", "user update, rev: %v", newRevision)
+		logg.LogTo("DEBUG", "user update, rev: %v", newRevision)
 	}
 
 }
