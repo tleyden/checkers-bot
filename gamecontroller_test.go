@@ -100,3 +100,13 @@ func TestCalculatePreMoveSleepSeconds(t *testing.T) {
 	assert.True(t, preMoveSleepSeconds > 0)
 	assert.True(t, preMoveSleepSeconds <= 30)
 }
+
+func TestGetChangedRev(t *testing.T) {
+	rev := "2-44abc375424f641c521ee5f52f4e214a"
+	revMap := map[string]interface{}{"rev": rev}
+	innerChanges := []interface{}{revMap}
+	changeResult := map[string]interface{}{}
+	changeResult["changes"] = innerChanges
+	changedRev := getChangedRev(changeResult)
+	assert.Equals(t, changedRev, rev)
+}

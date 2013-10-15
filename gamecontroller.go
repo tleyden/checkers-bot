@@ -35,6 +35,7 @@ type Game struct {
 	delayBeforeMove bool
 	feedType        FeedType
 	serverUrl       string
+	lastGameDocRev  string
 }
 
 type Changes map[string]interface{}
@@ -284,11 +285,11 @@ func (game Game) isOurTurn(gameState GameState) bool {
 	return gameState.ActiveTeam == game.ourTeamId
 }
 
-func (game Game) hasGameDocChanged(changes Changes) bool {
-	foundGameDoc := false
+func (game *Game) hasGameDocChanged(changes Changes) bool {
+	gameDocChanged := false
 	changeResultsRaw := changes["results"]
 	if changeResultsRaw == nil {
-		return foundGameDoc
+		return gameDocChanged
 	}
 	changeResults := changeResultsRaw.([]interface{})
 	for _, changeResultRaw := range changeResults {
@@ -296,10 +297,17 @@ func (game Game) hasGameDocChanged(changes Changes) bool {
 		docIdRaw := changeResult["id"]
 		docId := docIdRaw.(string)
 		if strings.Contains(docId, GAME_DOC_ID) {
-			foundGameDoc = true
+			changedRev := getChangedRev(changeResult)
+			logg.LogTo("DEBUG", "Game doc changedRev: %v", changedRev)
+			if game.lastGameDocRev == "" || changedRev != game.lastGameDocRev {
+				gameDocChanged = true
+				game.lastGameDocRev = changedRev
+				logg.LogTo("DEBUG", "Game changed, set new changeRev to: %v", changedRev)
+
+			}
 		}
 	}
-	return foundGameDoc
+	return gameDocChanged
 }
 
 func (game Game) fetchLatestGameState() (gameState GameState, err error) {
@@ -392,4 +400,15 @@ func (game *Game) handleChangesWaitForNextGame(changes Changes) (shouldQuit bool
 		game.gameState = gameState
 	}
 	return
+}
+
+// Given a "change result", eg, a single row in the _changes feed result,
+// figure out the revision for that row.
+// json example:
+// {"seq":"*:78942","id":"foo","changes":[{"rev":"2-44abc"}]}
+func getChangedRev(changeResult map[string]interface{}) string {
+	// clean up this garbage and replace with structs ..
+	changesElement := changeResult["changes"].([]interface{})
+	firstChangesElement := changesElement[0].(map[string]interface{})
+	return firstChangesElement["rev"].(string)
 }
