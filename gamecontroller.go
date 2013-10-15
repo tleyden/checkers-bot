@@ -19,6 +19,13 @@ const (
 	BLUE_TEAM          = 1
 )
 
+type FeedType int
+
+const (
+	NORMAL   = 0
+	LONGPOLL = 1
+)
+
 type Game struct {
 	thinker         Thinker
 	gameState       GameState
@@ -26,6 +33,7 @@ type Game struct {
 	db              couch.Database
 	user            User
 	delayBeforeMove bool
+	feedType        FeedType
 	serverUrl       string
 }
 
@@ -45,18 +53,24 @@ func (game *Game) GameLoop() {
 	curSinceValue := "0"
 
 	handleChange := func(reader io.Reader) string {
+		logg.LogTo("DEBUG", "handleChange called")
 		changes := decodeChanges(reader)
 		shouldQuit := game.handleChanges(changes)
 		if shouldQuit {
 			return "-1" // causes Changes() to return
 		} else {
 			curSinceValue = getNextSinceValue(curSinceValue, changes)
-			time.Sleep(time.Second * 1)
+			if game.feedType == NORMAL {
+				time.Sleep(time.Second * 1)
+			}
 			return curSinceValue
 		}
 	}
 
 	options := Changes{"since": curSinceValue}
+	if game.feedType == LONGPOLL {
+		options["feed"] = "longpoll"
+	}
 	game.db.Changes(handleChange, options)
 
 }
@@ -166,6 +180,10 @@ func (game *Game) ServerUrl() string {
 
 func (game *Game) SetServerUrl(serverUrl string) {
 	game.serverUrl = serverUrl
+}
+
+func (game *Game) SetFeedType(feedType FeedType) {
+	game.feedType = feedType
 }
 
 // Given a validmove (as chosen by the Thinker), create an "Outgoing Vote" that
