@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/couchbaselabs/logg"
 	"github.com/nu7hatch/gouuid"
-	"github.com/tleyden/dsallings-couch-go"
+	"github.com/tleyden/go-couch"
 	"io"
 	"strings"
 	"time"
