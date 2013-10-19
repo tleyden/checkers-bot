@@ -4,7 +4,7 @@ import (
 	"flag"
 )
 
-func ParseCmdLine() (team int, syncGatewayUrl string, feedType FeedType) {
+func ParseCmdLine() (team TeamType, syncGatewayUrl string, feedType FeedType) {
 
 	var teamString = flag.String(
 		"team",

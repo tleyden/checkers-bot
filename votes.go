@@ -6,7 +6,7 @@ type OutgoingVotes struct {
 	Revisions map[string]interface{} `json:"_revisions"`
 	Channels  []interface{}          `json:"channels"` // ??
 	Moves     []VoteMove             `json:"moves"`    // ??
-	TeamId    int                    `json:"team"`
+	TeamId    TeamType               `json:"team"`
 	GameId    int                    `json:"game"`
 	Count     int                    `json:"count"`
 	Turn      int                    `json:"turn"`
@@ -15,10 +15,10 @@ type OutgoingVotes struct {
 }
 
 type VoteMove struct {
-	GameId    int   `json:"game"`
-	Count     int   `json:"count"`
-	Locations []int `json:"locations"`
-	PieceId   int   `json:"piece"`
-	TeamId    int   `json:"team"`
-	Turn      int   `json:"turn"`
+	GameId    int      `json:"game"`
+	Count     int      `json:"count"`
+	Locations []int    `json:"locations"`
+	PieceId   int      `json:"piece"`
+	TeamId    TeamType `json:"team"`
+	Turn      int      `json:"turn"`
 }

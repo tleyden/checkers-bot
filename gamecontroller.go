@@ -15,8 +15,13 @@ const (
 	DEFAULT_SERVER_URL = "http://localhost:4984/checkers"
 	GAME_DOC_ID        = "game:checkers"
 	VOTES_DOC_ID       = "votes:checkers"
-	RED_TEAM           = 0
-	BLUE_TEAM          = 1
+)
+
+type TeamType int
+
+const (
+	RED_TEAM  = 0
+	BLUE_TEAM = 1
 )
 
 type FeedType int
@@ -29,7 +34,7 @@ const (
 type Game struct {
 	thinker         Thinker
 	gameState       GameState
-	ourTeamId       int
+	ourTeamId       TeamType
 	db              couch.Database
 	user            User
 	delayBeforeMove bool
@@ -40,7 +45,7 @@ type Game struct {
 
 type Changes map[string]interface{}
 
-func NewGame(ourTeamId int, thinker Thinker) *Game {
+func NewGame(ourTeamId TeamType, thinker Thinker) *Game {
 	game := &Game{ourTeamId: ourTeamId, thinker: thinker}
 	return game
 }

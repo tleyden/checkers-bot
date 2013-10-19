@@ -7,12 +7,12 @@ import (
 
 // data structure that corresponds to the checkers:game json doc
 type GameState struct {
-	Teams        []Team `json:"teams"`
-	ActiveTeam   int    `json:"activeTeam"`
-	WinningTeam  int    `json:"winningTeam"`
-	Number       int    `json:"number"`
-	Turn         int    `json:"turn"`
-	MoveInterval int    `json:"moveInterval"`
+	Teams        []Team   `json:"teams"`
+	ActiveTeam   TeamType `json:"activeTeam"`
+	WinningTeam  TeamType `json:"winningTeam"`
+	Number       int      `json:"number"`
+	Turn         int      `json:"turn"`
+	MoveInterval int      `json:"moveInterval"`
 }
 
 func NewGameStateFromString(jsonString string) GameState {
