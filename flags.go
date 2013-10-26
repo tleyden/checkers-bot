@@ -4,7 +4,16 @@ import (
 	"flag"
 )
 
-func ParseCmdLine() (team TeamType, syncGatewayUrl string, feedType FeedType) {
+type CheckersBotFlags struct {
+	Team                  TeamType
+	SyncGatewayUrl        string
+	FeedType              FeedType
+	RandomDelayBeforeMove int
+}
+
+func ParseCmdLine() (checkersBotFlags CheckersBotFlags) {
+
+	checkersBotFlags = CheckersBotFlags{}
 
 	var teamString = flag.String(
 		"team",
@@ -21,13 +30,18 @@ func ParseCmdLine() (team TeamType, syncGatewayUrl string, feedType FeedType) {
 		"longpoll",
 		"The feed type: longpoll | normal",
 	)
+	var randomDelayBeforeMove = flag.Int(
+		"randomDelayBeforeMove",
+		0,
+		"The max random delay before moving in seconds.  0 to disable it",
+	)
 
 	flag.Parse()
 
 	if *teamString == "BLUE" {
-		team = BLUE_TEAM
+		checkersBotFlags.Team = BLUE_TEAM
 	} else if *teamString == "RED" {
-		team = RED_TEAM
+		checkersBotFlags.Team = RED_TEAM
 	} else {
 		flag.PrintDefaults()
 		panic("Invalid command line args given")
@@ -39,11 +53,12 @@ func ParseCmdLine() (team TeamType, syncGatewayUrl string, feedType FeedType) {
 	}
 
 	if *feedTypeStr == "longpoll" {
-		feedType = LONGPOLL
+		checkersBotFlags.FeedType = LONGPOLL
 	} else if *feedTypeStr == "normal" {
-		feedType = NORMAL
+		checkersBotFlags.FeedType = NORMAL
 	}
 
-	syncGatewayUrl = *syncGatewayUrlPtr
+	checkersBotFlags.RandomDelayBeforeMove = *randomDelayBeforeMove
+	checkersBotFlags.SyncGatewayUrl = *syncGatewayUrlPtr
 	return
 }

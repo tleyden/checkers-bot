@@ -37,7 +37,7 @@ type Game struct {
 	ourTeamId       TeamType
 	db              couch.Database
 	user            User
-	delayBeforeMove bool
+	delayBeforeMove int
 	feedType        FeedType
 	serverUrl       string
 	lastGameDocRev  string
@@ -100,7 +100,7 @@ func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
 
 		if game.thinkerWantsToQuit(gameState) {
 			msg := "Thinker wants to quit the game loop now"
-			logg.LogTo("MAIN", msg)
+			logg.LogTo("DEBUG", msg)
 			shouldQuit = true
 			return
 		}
@@ -160,7 +160,7 @@ func (game *Game) CreateRemoteUser() {
 		TeamId: game.ourTeamId,
 	}
 	newId, newRevision, err := game.db.Insert(user)
-	logg.LogTo("MAIN", "Created new user %v rev %v", newId, newRevision)
+	logg.LogTo("DEBUG", "Created new user %v rev %v", newId, newRevision)
 
 	user.Rev = newRevision
 	game.user = *user
@@ -227,12 +227,12 @@ func (game *Game) PostChosenMove(votes *OutgoingVotes) {
 
 	preMoveSleepSeconds := game.calculatePreMoveSleepSeconds()
 
-	logg.LogTo("DEBUG", "sleep %v (s) before posting move", preMoveSleepSeconds)
+	logg.LogTo("MAIN", "Sleeping %v seconds", preMoveSleepSeconds)
 
 	time.Sleep(time.Second * time.Duration(preMoveSleepSeconds))
 
 	if len(votes.Locations) == 0 {
-		logg.LogTo("MAIN", "invalid move, ignoring: %v", votes)
+		logg.LogTo("DEBUG", "invalid move, ignoring: %v", votes)
 	}
 
 	var newId string
@@ -241,10 +241,10 @@ func (game *Game) PostChosenMove(votes *OutgoingVotes) {
 
 	if votes.Rev == "" {
 		newId, newRevision, err = game.db.Insert(votes)
-		logg.LogTo("MAIN", "Sent vote with Id: %v, Revision: %v", newId, newRevision)
+		logg.LogTo("MAIN", "Game: %v -> Sent vote: %v, Revision: %v", game.gameState.Number, newId, newRevision)
 	} else {
 		newRevision, err = game.db.Edit(votes)
-		logg.LogTo("MAIN", "Sent vote with Id: %v, Revision: %v", votes.Id, newRevision)
+		logg.LogTo("MAIN", "Game: %v -> Sent vote: %v, Revision: %v", game.gameState.Number, votes.Id, newRevision)
 	}
 
 	if err != nil {
@@ -254,7 +254,7 @@ func (game *Game) PostChosenMove(votes *OutgoingVotes) {
 
 }
 
-func (game *Game) SetDelayBeforeMove(delayBeforeMove bool) {
+func (game *Game) SetDelayBeforeMove(delayBeforeMove int) {
 	game.delayBeforeMove = delayBeforeMove
 }
 
@@ -353,16 +353,8 @@ func getNextSinceValue(curSinceValue string, changes Changes) string {
 
 func (game *Game) calculatePreMoveSleepSeconds() (delay float64) {
 	delay = 0
-	if game.delayBeforeMove {
-		// we don't want to make a move "too soon", so lets
-		// cap the minimum amount we sleep at 10% of the move interval
-		minSleep := float64(game.gameState.MoveInterval) * 0.10
-
-		// likewise, don't want to cut it to close to the timeout
-		maxSleep := float64(game.gameState.MoveInterval) * 0.90
-
-		delay = randomInRange(minSleep, maxSleep)
-
+	if game.delayBeforeMove > 0 {
+		delay = randomInRange(float64(0), float64(game.delayBeforeMove))
 	}
 	return
 }
