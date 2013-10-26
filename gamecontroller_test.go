@@ -94,8 +94,7 @@ func TestOutgoingVoteFromMove(t *testing.T) {
 
 func TestCalculatePreMoveSleepSeconds(t *testing.T) {
 	game := &Game{}
-	game.SetDelayBeforeMove(true)
-	game.gameState.MoveInterval = 30
+	game.SetDelayBeforeMove(30)
 	preMoveSleepSeconds := game.calculatePreMoveSleepSeconds()
 	assert.True(t, preMoveSleepSeconds > 0)
 	assert.True(t, preMoveSleepSeconds <= 30)
