@@ -7,12 +7,15 @@ import (
 
 // data structure that corresponds to the checkers:game json doc
 type GameState struct {
-	Teams        []Team   `json:"teams"`
-	ActiveTeam   TeamType `json:"activeTeam"`
-	WinningTeam  TeamType `json:"winningTeam"`
-	Number       int      `json:"number"`
-	Turn         int      `json:"turn"`
-	MoveInterval int      `json:"moveInterval"`
+	Id           string        `json:"_id"`
+	Rev          string        `json:"_rev"`
+	Teams        []Team        `json:"teams"`
+	ActiveTeam   TeamType      `json:"activeTeam"`
+	WinningTeam  TeamType      `json:"winningTeam"`
+	Number       int           `json:"number"`
+	Turn         int           `json:"turn"`
+	MoveInterval int           `json:"moveInterval"`
+	Moves        []MoveHistory `json:"moves"`
 }
 
 func NewGameStateFromString(jsonString string) GameState {
@@ -53,6 +56,12 @@ type ValidMove struct {
 	King          bool      `json:"king"`
 	PieceId       int
 	StartLocation int
+}
+
+type MoveHistory struct {
+	Piece     int      `json:"piece"`
+	Team      TeamType `json:"team"`
+	Locations []int    `json:"locations"`
 }
 
 type Capture struct {
