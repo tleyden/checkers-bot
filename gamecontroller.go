@@ -59,7 +59,6 @@ func (game *Game) GameLoop() {
 	curSinceValue := "0"
 
 	handleChange := func(reader io.Reader) string {
-		logg.LogTo("DEBUG", "handleChange called")
 		changes := decodeChanges(reader)
 		shouldQuit := game.handleChanges(changes)
 		if shouldQuit {
@@ -99,14 +98,14 @@ func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
 		game.gameState = gameState
 
 		if game.thinkerWantsToQuit(gameState) {
-			msg := "Thinker wants to quit the game loop now"
-			logg.LogTo("DEBUG", msg)
+			msg := fmt.Sprintf("Thinker wants to quit the %v game loop now", game.ourTeamName())
+			logg.LogTo("CHECKERSBOT", msg)
 			shouldQuit = true
 			return
 		}
 
 		if isOurTurn := game.isOurTurn(gameState); !isOurTurn {
-			logg.LogTo("DEBUG", "It's not our turn, ignoring changes")
+			logg.LogTo("CHECKERSBOT", "It's not %v turn, ignoring changes", game.ourTeamName())
 			return
 		}
 
@@ -125,10 +124,10 @@ func (game Game) thinkerWantsToQuit(gameState GameState) (shouldQuit bool) {
 	if game.finished(gameState) {
 		if observer, ok := game.thinker.(Observer); ok {
 			shouldQuit = observer.GameFinished(gameState)
-			logg.LogTo("DEBUG", "observer returned shouldQuit: %v", shouldQuit)
+			logg.LogTo("CHECKERSBOT", "observer returned shouldQuit: %v", shouldQuit)
 			return
 		} else {
-			logg.LogTo("DEBUG", "thinker is not an Observer, not calling GameFinished")
+			logg.LogTo("CHECKERSBOT", "thinker is not an Observer, not calling GameFinished")
 		}
 
 	}
@@ -136,10 +135,10 @@ func (game Game) thinkerWantsToQuit(gameState GameState) (shouldQuit bool) {
 }
 
 func (game Game) finished(gameState GameState) bool {
-	logg.LogTo("DEBUG", "game.finished() called")
+	logg.LogTo("CHECKERSBOT", "game.finished() called")
 	gameHasWinner := (gameState.WinningTeam != -1)
 	finished := gameHasWinner
-	logg.LogTo("DEBUG", "game.finished() returning: %v", finished)
+	logg.LogTo("CHECKERSBOT", "game.finished() returning: %v", finished)
 	return finished
 }
 
@@ -160,7 +159,7 @@ func (game *Game) CreateRemoteUser() {
 		TeamId: game.ourTeamId,
 	}
 	newId, newRevision, err := game.db.Insert(user)
-	logg.LogTo("DEBUG", "Created new user %v rev %v", newId, newRevision)
+	logg.LogTo("CHECKERSBOT", "Created new user %v rev %v", newId, newRevision)
 
 	user.Rev = newRevision
 	game.user = *user
@@ -202,10 +201,10 @@ func (game *Game) OutgoingVoteFromMove(validMove ValidMove) (votes *OutgoingVote
 
 	err := game.db.Retrieve(votesId, votes)
 	if err != nil {
-		logg.LogTo("DEBUG", "Unable to find existing vote doc: %v", votesId)
+		logg.LogTo("CHECKERSBOT", "Unable to find existing vote doc: %v", votesId)
 	}
 
-	logg.LogTo("DEBUG", "GET votes, rev: %v", votes.Rev)
+	logg.LogTo("CHECKERSBOT", "GET votes, rev: %v", votes.Rev)
 
 	votes.Id = votesId
 	votes.Turn = game.gameState.Turn
@@ -223,28 +222,29 @@ func (game *Game) OutgoingVoteFromMove(validMove ValidMove) (votes *OutgoingVote
 
 func (game *Game) PostChosenMove(votes *OutgoingVotes) {
 
-	logg.LogTo("DEBUG", "post chosen move: %v", votes)
+	logg.LogTo("CHECKERSBOT", "Post chosen move as %v: %v", game.ourTeamName(), votes)
 
 	preMoveSleepSeconds := game.calculatePreMoveSleepSeconds()
 
-	logg.LogTo("MAIN", "Sleeping %v seconds", preMoveSleepSeconds)
+	logg.LogTo("CHECKERSBOT", "Sleeping %v seconds", preMoveSleepSeconds)
 
 	time.Sleep(time.Second * time.Duration(preMoveSleepSeconds))
 
 	if len(votes.Locations) == 0 {
-		logg.LogTo("DEBUG", "invalid move, ignoring: %v", votes)
+		logg.LogTo("CHECKERSBOT", "invalid move, ignoring: %v", votes)
 	}
 
 	var newId string
 	var newRevision string
 	var err error
+	teamName := game.ourTeamName()
 
 	if votes.Rev == "" {
 		newId, newRevision, err = game.db.Insert(votes)
-		logg.LogTo("MAIN", "Game: %v -> Sent vote: %v, Revision: %v", game.gameState.Number, newId, newRevision)
+		logg.LogTo("CHECKERSBOT", "Game: %v -> Sent vote: %v as %v, Revision: %v", game.gameState.Number, teamName, newId, newRevision)
 	} else {
 		newRevision, err = game.db.Edit(votes)
-		logg.LogTo("MAIN", "Game: %v -> Sent vote: %v, Revision: %v", game.gameState.Number, votes.Id, newRevision)
+		logg.LogTo("CHECKERSBOT", "Game: %v -> Sent vote: %v as %v, Revision: %v", game.gameState.Number, teamName, votes.Id, newRevision)
 	}
 
 	if err != nil {
@@ -272,7 +272,7 @@ func (game *Game) updateUserGameNumber(gameState GameState) {
 			logg.LogError(err)
 			return
 		}
-		logg.LogTo("DEBUG", "user update, rev: %v", newRevision)
+		logg.LogTo("CHECKERSBOT", "user update, rev: %v", newRevision)
 	}
 
 }
@@ -283,6 +283,15 @@ func (game Game) opponentTeamId() int {
 		return BLUE_TEAM
 	default:
 		return RED_TEAM
+	}
+}
+
+func (game Game) ourTeamName() string {
+	switch game.ourTeamId {
+	case RED_TEAM:
+		return "RED"
+	default:
+		return "BLUE"
 	}
 }
 
@@ -303,11 +312,11 @@ func (game *Game) hasGameDocChanged(changes Changes) bool {
 		docId := docIdRaw.(string)
 		if strings.Contains(docId, GAME_DOC_ID) {
 			changedRev := getChangedRev(changeResult)
-			logg.LogTo("DEBUG", "Game doc changedRev: %v", changedRev)
+			logg.LogTo("CHECKERSBOT", "Game doc changedRev: %v", changedRev)
 			if game.lastGameDocRev == "" || changedRev != game.lastGameDocRev {
 				gameDocChanged = true
 				game.lastGameDocRev = changedRev
-				logg.LogTo("DEBUG", "Game changed, set new changeRev to: %v", changedRev)
+				logg.LogTo("CHECKERSBOT", "Game changed, set new changeRev to: %v", changedRev)
 
 			}
 		}
