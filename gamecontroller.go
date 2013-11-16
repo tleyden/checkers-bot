@@ -368,6 +368,10 @@ func (game *Game) calculatePreMoveSleepSeconds() (delay float64) {
 	return
 }
 
+func (game *Game) Turn() int {
+	return game.gameState.Turn
+}
+
 // Wait until the game number increments
 func (game *Game) WaitForNextGame() {
 
