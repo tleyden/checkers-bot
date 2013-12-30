@@ -3,6 +3,7 @@ package checkersbot
 import (
 	"encoding/json"
 	"github.com/couchbaselabs/logg"
+	core "github.com/tleyden/checkers-core"
 )
 
 // data structure that corresponds to the checkers:game json doc
@@ -36,7 +37,47 @@ func NewGameStateFromString(jsonString string) GameState {
 	return *gameState
 }
 
+func (gamestate GameState) Export() core.Board {
+	board := core.NewEmptyBoard()
+	for teamIndex, team := range gamestate.Teams {
+		for _, piece := range team.Pieces {
+
+			loc := getCoreLocation(piece.Location)
+			row := loc.Row()
+			col := loc.Col()
+
+			if piece.Captured == true {
+				continue
+			}
+
+			switch {
+			case teamIndex == 0:
+				switch {
+				case piece.King:
+					board[row][col] = core.BLACK_KING
+				default:
+					board[row][col] = core.BLACK
+				}
+			case teamIndex == 1:
+				switch {
+				case piece.King:
+					board[row][col] = core.RED_KING
+				default:
+					board[row][col] = core.RED
+				}
+
+			}
+
+		}
+	}
+	return board
+}
+
 type Piece struct {
+
+	// the locations are numbered from 1 to 32 where 1
+	// represents the top-left dark square for the red team,
+	// and 32 represents the bottom-right dark square for blue team.
 	Location   int         `json:"location"`
 	King       bool        `json:"king"`
 	Captured   bool        `json:"captured"`
@@ -51,6 +92,16 @@ type Team struct {
 }
 
 type ValidMove struct {
+
+	// in the case of a normal move or single jump, this will contain a single
+	// location which contains the location value of the move destination.
+	// (the move starting point is contained in the outer Piece struct)
+	// in the case of a double+ jump however, this will contain an array of
+	// the locations - the first location will be the first jump landing spot,
+	// the second location will be the second jump landing spot, etc..
+	// so for example, in this position: http://cl.ly/image/3k470u1P0G3M
+	// the piece location will be 24, and the locations will be: "locations":[15,6]
+	// which means 24->15,15->6
 	Locations     []int     `json:"locations"`
 	Captures      []Capture `json:"captures"`
 	King          bool      `json:"king"`
