@@ -4,7 +4,11 @@ import (
 	core "github.com/tleyden/checkers-core"
 )
 
-func getCoreLocation(location int) core.Location {
+// 		bestValidMove := cbot.FindCorrespondingValidMove(move, allValidMoves)
+
+// func
+
+func GetCoreLocation(location int) core.Location {
 
 	if location == 1 {
 		return core.NewLocation(0, 1)

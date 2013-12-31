@@ -42,7 +42,7 @@ func (gamestate GameState) Export() core.Board {
 	for teamIndex, team := range gamestate.Teams {
 		for _, piece := range team.Pieces {
 
-			loc := getCoreLocation(piece.Location)
+			loc := GetCoreLocation(piece.Location)
 			row := loc.Row()
 			col := loc.Col()
 
