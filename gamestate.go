@@ -135,3 +135,10 @@ func (t Team) AllValidMoves() (validMoves []ValidMove) {
 	}
 	return
 }
+
+func (validMove ValidMove) EndLocation() int {
+
+	lastIndex := len(validMove.Locations) - 1
+	return validMove.Locations[lastIndex]
+
+}

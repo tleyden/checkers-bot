@@ -1,12 +1,39 @@
 package checkersbot
 
 import (
+	_ "github.com/couchbaselabs/logg"
 	core "github.com/tleyden/checkers-core"
 )
 
 // 		bestValidMove := cbot.FindCorrespondingValidMove(move, allValidMoves)
 
-// func
+func FindCorrespondingValidMove(move core.Move, allValidMoves []ValidMove) (index int) {
+
+	return 0
+
+}
+
+func EqualsCoreMove(validMove ValidMove, move core.Move) bool {
+
+	// translate valid move start location to core location
+	validMoveStart := GetCoreLocation(validMove.StartLocation)
+
+	// are start locations equal?
+	if !validMoveStart.Equals(move.From()) {
+		return false
+	}
+
+	// translate valid move end location to core location
+	validMoveEnd := GetCoreLocation(validMove.EndLocation())
+
+	// are end locations equal?
+	if !validMoveEnd.Equals(move.To()) {
+		return false
+	}
+
+	return true
+
+}
 
 func GetCoreLocation(location int) core.Location {
 

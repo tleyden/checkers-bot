@@ -21,3 +21,75 @@ func TestGetCoreLocation(t *testing.T) {
 	assert.Equals(t, GetCoreLocation(28), core.NewLocation(6, 7))
 
 }
+
+func TestFindCorrespondingValidMove(t *testing.T) {
+
+	validMove := ValidMove{
+		StartLocation: 1,
+		Locations:     []int{5},
+	}
+	validMoves := []ValidMove{validMove}
+	from := core.NewLocation(0, 1)
+	to := core.NewLocation(1, 0)
+
+	move := core.NewMoveFromTo(from, to)
+
+	matchedValidMoveIndex := FindCorrespondingValidMove(move, validMoves)
+
+	assert.Equals(t, matchedValidMoveIndex, 0)
+
+}
+
+func TestEqualsCoreMove(t *testing.T) {
+
+	// start location doesn't match
+	validMove := ValidMove{
+		StartLocation: 1,
+		Locations:     []int{5},
+	}
+	from := core.NewLocation(0, 6)
+	to := core.NewLocation(1, 1)
+	move := core.NewMoveFromTo(from, to)
+	assert.False(t, EqualsCoreMove(validMove, move))
+
+	// end location doesn't match
+	validMove = ValidMove{
+		StartLocation: 1,
+		Locations:     []int{5},
+	}
+	from = core.NewLocation(0, 1)
+	to = core.NewLocation(5, 5)
+	move = core.NewMoveFromTo(from, to)
+	assert.False(t, EqualsCoreMove(validMove, move))
+
+	// single jump
+	validMove = ValidMove{
+		StartLocation: 1,
+		Locations:     []int{10},
+	}
+	from = core.NewLocation(0, 1)
+	to = core.NewLocation(2, 3)
+	move = core.NewMoveFromTo(from, to)
+	assert.True(t, EqualsCoreMove(validMove, move))
+
+	// multi jump
+	validMove = ValidMove{
+		StartLocation: 1,
+		Locations:     []int{10, 19},
+	}
+	from = core.NewLocation(0, 1)
+	to = core.NewLocation(4, 5)
+	move = core.NewMoveFromTo(from, to)
+	assert.True(t, EqualsCoreMove(validMove, move))
+
+	// basic move match
+	validMove = ValidMove{
+		StartLocation: 1,
+		Locations:     []int{5},
+	}
+	from = core.NewLocation(0, 1)
+	to = core.NewLocation(1, 0)
+	move = core.NewMoveFromTo(from, to)
+	assert.True(t, EqualsCoreMove(validMove, move))
+
+}
