@@ -5,11 +5,17 @@ import (
 	core "github.com/tleyden/checkers-core"
 )
 
-// 		bestValidMove := cbot.FindCorrespondingValidMove(move, allValidMoves)
-
-func FindCorrespondingValidMove(move core.Move, allValidMoves []ValidMove) (index int) {
-
-	return 0
+func CorrespondingValidMoveIndex(move core.Move, allValidMoves []ValidMove) (found bool, index int) {
+	for i, validMove := range allValidMoves {
+		if EqualsCoreMove(validMove, move) {
+			found = true
+			index = i
+			return
+		}
+	}
+	found = false
+	index = -1
+	return
 
 }
 
@@ -33,6 +39,15 @@ func EqualsCoreMove(validMove ValidMove, move core.Move) bool {
 
 	return true
 
+}
+
+func GetCorePlayer(teamId TeamType) core.Player {
+	switch {
+	case teamId == 0:
+		return core.BLACK_PLAYER
+	default:
+		return core.RED_PLAYER
+	}
 }
 
 func GetCoreLocation(location int) core.Location {

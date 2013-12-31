@@ -34,9 +34,8 @@ func TestFindCorrespondingValidMove(t *testing.T) {
 
 	move := core.NewMoveFromTo(from, to)
 
-	matchedValidMoveIndex := FindCorrespondingValidMove(move, validMoves)
-
-	assert.Equals(t, matchedValidMoveIndex, 0)
+	found, _ := CorrespondingValidMoveIndex(move, validMoves)
+	assert.True(t, found)
 
 }
 
