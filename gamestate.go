@@ -2,6 +2,7 @@ package checkersbot
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/couchbaselabs/logg"
 	core "github.com/tleyden/checkers-core"
 )
@@ -140,5 +141,11 @@ func (validMove ValidMove) EndLocation() int {
 
 	lastIndex := len(validMove.Locations) - 1
 	return validMove.Locations[lastIndex]
+
+}
+
+func (validMove ValidMove) String() string {
+
+	return fmt.Sprintf("%v -> %v", validMove.StartLocation, validMove.Locations)
 
 }
