@@ -152,3 +152,106 @@ func GetCoreLocation(location int) core.Location {
 	return core.NewLocation(-1, -1)
 
 }
+
+func ExportCoreLocation(location core.Location) int {
+
+	if location == core.NewLocation(0, 1) {
+		return 1
+	}
+	if location == core.NewLocation(0, 3) {
+		return 2
+	}
+	if location == core.NewLocation(0, 5) {
+		return 3
+	}
+	if location == core.NewLocation(0, 7) {
+		return 4
+	}
+	if location == core.NewLocation(1, 0) {
+		return 5
+	}
+	if location == core.NewLocation(1, 2) {
+		return 6
+	}
+	if location == core.NewLocation(1, 4) {
+		return 7
+	}
+	if location == core.NewLocation(1, 6) {
+		return 8
+	}
+	if location == core.NewLocation(2, 1) {
+		return 9
+	}
+	if location == core.NewLocation(2, 3) {
+		return 10
+	}
+	if location == core.NewLocation(2, 5) {
+		return 11
+	}
+	if location == core.NewLocation(2, 7) {
+		return 12
+	}
+	if location == core.NewLocation(3, 0) {
+		return 13
+	}
+	if location == core.NewLocation(3, 2) {
+		return 14
+	}
+	if location == core.NewLocation(3, 4) {
+		return 15
+	}
+	if location == core.NewLocation(3, 6) {
+		return 16
+	}
+	if location == core.NewLocation(4, 1) {
+		return 17
+	}
+	if location == core.NewLocation(4, 3) {
+		return 18
+	}
+	if location == core.NewLocation(4, 5) {
+		return 19
+	}
+	if location == core.NewLocation(4, 7) {
+		return 20
+	}
+	if location == core.NewLocation(5, 0) {
+		return 21
+	}
+	if location == core.NewLocation(5, 2) {
+		return 22
+	}
+	if location == core.NewLocation(5, 4) {
+		return 23
+	}
+	if location == core.NewLocation(5, 6) {
+		return 24
+	}
+	if location == core.NewLocation(6, 1) {
+		return 25
+	}
+	if location == core.NewLocation(6, 3) {
+		return 26
+	}
+	if location == core.NewLocation(6, 5) {
+		return 27
+	}
+	if location == core.NewLocation(6, 7) {
+		return 28
+	}
+	if location == core.NewLocation(7, 0) {
+		return 29
+	}
+	if location == core.NewLocation(7, 2) {
+		return 30
+	}
+	if location == core.NewLocation(7, 4) {
+		return 31
+	}
+	if location == core.NewLocation(7, 6) {
+		return 32
+	}
+
+	return -1
+
+}
