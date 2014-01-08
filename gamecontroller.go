@@ -94,7 +94,7 @@ func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
 			return
 		}
 
-		game.updateUserGameNumber(gameState)
+		game.updateUserGameNumberCasLoop(gameState)
 		game.gameState = gameState
 
 		if game.thinkerWantsToQuit(gameState) {
@@ -277,6 +277,46 @@ func (game *Game) updateUserGameNumber(gameState GameState) {
 
 }
 
+// Update the game.user object so it has the current game number.
+// It does it every time we get a new gamestate document, since
+// it can change any time.  Wrap in a CAS (compare and swap) loop
+// since it's possible to get a 409 conflict
+func (game *Game) updateUserGameNumberCasLoop(gameState GameState) {
+	logg.LogTo("CHECKERSBOT", " updateUserGameNumberCasLoop")
+	maxTries := 5
+	for i := 0; i < maxTries; i++ {
+
+		// try to do a PUT
+		game.user.GameNumber = gameState.Number
+		newRevision, err := game.db.Edit(game.user)
+		if err != nil {
+			logg.LogError(err)
+			msg := "Error updating user game number to %v"
+			logg.Log(msg, gameState.Number)
+
+			// do a GET to get the latest user doc
+			fetchedUser, fetchedUserErr := game.fetchLatestUserDoc()
+
+			if fetchedUserErr != nil {
+				logg.LogError(fetchedUserErr)
+			} else {
+				// update the game number to the value we want
+				fetchedUser.GameNumber = gameState.Number
+				game.user = fetchedUser
+
+			}
+
+		} else {
+			logg.LogTo("CHECKERSBOT", "updated game #: %v", game.user.GameNumber)
+			logg.LogTo("CHECKERSBOT", "user update, rev: %v", newRevision)
+			return
+		}
+
+	}
+	logg.LogPanic("Failed to update user game number in %v tries", maxTries)
+
+}
+
 func (game Game) opponentTeamId() int {
 	switch game.ourTeamId {
 	case RED_TEAM:
@@ -337,6 +377,15 @@ func (game Game) fetchLatestGameState() (gameState GameState, err error) {
 	err = game.db.Retrieve(GAME_DOC_ID, gameStateFetched)
 	if err == nil {
 		gameState = *gameStateFetched
+	}
+	return
+}
+
+func (game Game) fetchLatestUserDoc() (user User, err error) {
+	userFetched := &User{}
+	err = game.db.Retrieve(game.user.Id, userFetched)
+	if err == nil {
+		user = *userFetched
 	}
 	return
 }
