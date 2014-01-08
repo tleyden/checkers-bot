@@ -282,7 +282,15 @@ func (game *Game) updateUserGameNumber(gameState GameState) {
 // it can change any time.  Wrap in a CAS (compare and swap) loop
 // since it's possible to get a 409 conflict
 func (game *Game) updateUserGameNumberCasLoop(gameState GameState) {
+
 	logg.LogTo("CHECKERSBOT", " updateUserGameNumberCasLoop")
+
+	gameNumberChanged := (game.gameState.Number != gameState.Number)
+	if !gameNumberChanged {
+		logg.LogTo("CHECKERSBOT", "Game number has not changed, doing nothing")
+		return
+	}
+
 	maxTries := 5
 	for i := 0; i < maxTries; i++ {
 
