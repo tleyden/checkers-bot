@@ -35,7 +35,7 @@ func TestExport(t *testing.T) {
 	// export to core.Board
 	board := gameState.Export()
 
-	logg.LogTo("TEST", "board: %v", board.CompactString())
+	logg.LogTo("TEST", "board: %v", board.CompactString(true))
 
 	// make assertions about core.board
 	assert.True(t, board.PieceAt(core.NewLocation(0, 1)) == core.BLACK_KING)
