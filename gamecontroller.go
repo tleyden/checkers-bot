@@ -116,6 +116,7 @@ func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
 		if game.thinkerWantsToQuit(gameState) {
 			msg := fmt.Sprintf("Thinker wants to quit the %v game loop now.  Game state: %v", game.ourTeamName(), gameState)
 			logg.LogTo("CHECKERSBOT", msg)
+			logg.LogTo("CHECKERSBOT", "game #: %v team: %v", game.user.GameNumber, game.ourTeamName())
 			shouldQuit = true
 			return
 		}
@@ -145,7 +146,7 @@ func (game Game) thinkerWantsToQuit(gameState GameState) (shouldQuit bool) {
 	if game.finished(gameState) {
 		if observer, ok := game.thinker.(Observer); ok {
 			shouldQuit = observer.GameFinished(gameState)
-			logg.LogTo("CHECKERSBOT", "observer returned shouldQuit: %v", shouldQuit)
+			logg.LogTo("CHECKERSBOT", "%v team observer returned shouldQuit: %v", game.ourTeamName(), shouldQuit)
 			return
 		} else {
 			logg.LogTo("CHECKERSBOT", "thinker is not an Observer, not calling GameFinished")
@@ -156,12 +157,14 @@ func (game Game) thinkerWantsToQuit(gameState GameState) (shouldQuit bool) {
 }
 
 func (game Game) finished(gameState GameState) bool {
-	logg.LogTo("CHECKERSBOT", "game.finished() called for team %v", game.ourTeamName())
+	logg.LogTo("CHECKERSBOT", "game.finished() called for team %v, gameState #: %v game.gameState #: %v", game.ourTeamName(), gameState.Number, game.gameState.Number)
 	gameHasWinner := (gameState.WinningTeam != -1)
 	finished := gameHasWinner
 	logg.LogTo("CHECKERSBOT", "game.finished() returning: %v.  team: %v", finished, game.ourTeamName())
 	if finished {
 		logg.LogTo("CHECKERSBOT", "game.finished() gamestate: %v.  team: %v", gameState, game.ourTeamName())
+		logg.LogTo("CHECKERSBOT", "wining team: %v", gameState.WinningTeam.String())
+		logg.LogTo("CHECKERSBOT", "game #: %v", gameState.Number)
 	}
 	return finished
 }
@@ -284,35 +287,18 @@ func (game *Game) SetDelayBeforeMove(delayBeforeMove int) {
 
 // Update the game.user object so it has the current game number.
 // It does it every time we get a new gamestate document, since
-// it can change any time.
-func (game *Game) updateUserGameNumber(gameState GameState) {
-	gameNumberChanged := (game.gameState.Number != gameState.Number)
-	if gameNumberChanged {
-		// TODO: getting 409 conflicts here, need to
-		// do a CAS loop
-		game.user.GameNumber = gameState.Number
-		newRevision, err := game.db.Edit(game.user)
-		if err != nil {
-			logg.LogError(err)
-			return
-		}
-		logg.LogTo("CHECKERSBOT", "user update, rev: %v", newRevision)
-	}
-
-}
-
-// Update the game.user object so it has the current game number.
-// It does it every time we get a new gamestate document, since
 // it can change any time.  Wrap in a CAS (compare and swap) loop
 // since it's possible to get a 409 conflict
 func (game *Game) updateUserGameNumberCasLoop(gameState GameState) {
 
-	logg.LogTo("CHECKERSBOT", " updateUserGameNumberCasLoop")
+	logg.LogTo("CHECKERSBOT", " updateUserGameNumberCasLoop for team: %v", game.ourTeamName())
 
 	gameNumberChanged := (game.gameState.Number != gameState.Number)
 	if !gameNumberChanged {
-		logg.LogTo("CHECKERSBOT", "Game number has not changed, doing nothing")
+		logg.LogTo("CHECKERSBOT", "Game number has not changed (%v == %v), doing nothing", game.gameState.Number, gameState.Number)
 		return
+	} else {
+		logg.LogTo("CHECKERSBOT", "Game number has changed (%v != %v)", game.gameState.Number, gameState.Number)
 	}
 
 	maxTries := 5
@@ -325,6 +311,10 @@ func (game *Game) updateUserGameNumberCasLoop(gameState GameState) {
 			logg.LogError(err)
 			msg := "Error updating user game number to %v"
 			logg.Log(msg, gameState.Number)
+
+			if game.finished(gameState) {
+				logg.LogTo("CHECKERSBOT", "game is finished, shouldn't team %v have already quit?", game.ourTeamName())
+			}
 
 			// do a GET to get the latest user doc
 			fetchedUser, fetchedUserErr := game.fetchLatestUserDoc()
@@ -340,7 +330,7 @@ func (game *Game) updateUserGameNumberCasLoop(gameState GameState) {
 			}
 
 		} else {
-			logg.LogTo("CHECKERSBOT", "updated game #: %v", game.user.GameNumber)
+			logg.LogTo("CHECKERSBOT", "updated game #: %v team: %v", game.user.GameNumber, game.ourTeamName())
 			logg.LogTo("CHECKERSBOT", "user update, rev: %v", newRevision)
 			return
 		}
