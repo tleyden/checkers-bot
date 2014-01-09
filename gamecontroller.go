@@ -20,15 +20,25 @@ const (
 type TeamType int
 
 const (
-	RED_TEAM  = 0
-	BLUE_TEAM = 1
+	RED_TEAM = TeamType(iota)
+	BLUE_TEAM
 )
+
+func (t TeamType) String() string {
+	switch t {
+	case RED_TEAM:
+		return "RED"
+	default:
+		return "BLUE"
+	}
+
+}
 
 type FeedType int
 
 const (
-	NORMAL   = 0
-	LONGPOLL = 1
+	NORMAL = FeedType(iota)
+	LONGPOLL
 )
 
 type Game struct {
@@ -325,7 +335,7 @@ func (game *Game) updateUserGameNumberCasLoop(gameState GameState) {
 
 }
 
-func (game Game) opponentTeamId() int {
+func (game Game) opponentTeamId() TeamType {
 	switch game.ourTeamId {
 	case RED_TEAM:
 		return BLUE_TEAM
