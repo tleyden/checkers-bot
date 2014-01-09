@@ -78,6 +78,7 @@ func (game *Game) GameLoop() {
 			if game.feedType == NORMAL {
 				time.Sleep(time.Second * 1)
 			}
+			logg.LogTo("CHECKERSBOT", "New sinceValue for team %v: %v", game.ourTeamName(), curSinceValue)
 			return curSinceValue
 		}
 	}
@@ -94,12 +95,17 @@ func (game *Game) GameLoop() {
 // If it has changed, and it's our turn to make a move, then call
 // the embedded Thinker to make a move or abort the game.
 func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
+	msg := fmt.Sprintf("Handle changes called for %v", game.ourTeamName())
+	logg.LogTo("CHECKERSBOT", msg)
+
 	shouldQuit = false
 	gameDocChanged := game.hasGameDocChanged(changes)
 	if gameDocChanged {
 		gameState, err := game.fetchLatestGameState()
 		if err != nil {
 			logg.LogError(err)
+			msg := fmt.Sprintf("Due to error fetching game state team %v quitting.  Game state: %v", game.ourTeamName(), gameState)
+			logg.LogTo("CHECKERSBOT", msg)
 			shouldQuit = true
 			return
 		}
@@ -108,7 +114,7 @@ func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
 		game.gameState = gameState
 
 		if game.thinkerWantsToQuit(gameState) {
-			msg := fmt.Sprintf("Thinker wants to quit the %v game loop now", game.ourTeamName())
+			msg := fmt.Sprintf("Thinker wants to quit the %v game loop now.  Game state: %v", game.ourTeamName(), gameState)
 			logg.LogTo("CHECKERSBOT", msg)
 			shouldQuit = true
 			return
@@ -119,10 +125,15 @@ func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
 			return
 		}
 
+		logg.LogTo("CHECKERSBOT", "Call %v thinker", game.ourTeamName())
 		bestMove, ok := game.thinker.Think(gameState)
+
 		if ok {
+			logg.LogTo("CHECKERSBOT", "%v thinker returned move, sending vote", game.ourTeamName())
 			outgoingVote := game.OutgoingVoteFromMove(bestMove)
 			game.PostChosenMove(outgoingVote)
+		} else {
+			logg.LogTo("CHECKERSBOT", "%v thinker returned not ok", game.ourTeamName())
 		}
 
 	}
@@ -145,10 +156,13 @@ func (game Game) thinkerWantsToQuit(gameState GameState) (shouldQuit bool) {
 }
 
 func (game Game) finished(gameState GameState) bool {
-	logg.LogTo("CHECKERSBOT", "game.finished() called")
+	logg.LogTo("CHECKERSBOT", "game.finished() called for team %v", game.ourTeamName())
 	gameHasWinner := (gameState.WinningTeam != -1)
 	finished := gameHasWinner
-	logg.LogTo("CHECKERSBOT", "game.finished() returning: %v", finished)
+	logg.LogTo("CHECKERSBOT", "game.finished() returning: %v.  team: %v", finished, game.ourTeamName())
+	if finished {
+		logg.LogTo("CHECKERSBOT", "game.finished() gamestate: %v.  team: %v", gameState, game.ourTeamName())
+	}
 	return finished
 }
 
@@ -169,7 +183,7 @@ func (game *Game) CreateRemoteUser() {
 		TeamId: game.ourTeamId,
 	}
 	newId, newRevision, err := game.db.Insert(user)
-	logg.LogTo("CHECKERSBOT", "Created new user %v rev %v", newId, newRevision)
+	logg.LogTo("CHECKERSBOT", "Created new user %v rev %v team %v", newId, newRevision, game.ourTeamName())
 
 	user.Rev = newRevision
 	game.user = *user
@@ -317,6 +331,7 @@ func (game *Game) updateUserGameNumberCasLoop(gameState GameState) {
 
 			if fetchedUserErr != nil {
 				logg.LogError(fetchedUserErr)
+				logg.LogTo("CHECKERSBOT", "error fetching latest user doc")
 			} else {
 				// update the game number to the value we want
 				fetchedUser.GameNumber = gameState.Number
@@ -370,11 +385,11 @@ func (game *Game) hasGameDocChanged(changes Changes) bool {
 		docId := docIdRaw.(string)
 		if strings.Contains(docId, GAME_DOC_ID) {
 			changedRev := getChangedRev(changeResult)
-			logg.LogTo("CHECKERSBOT", "Game doc changedRev: %v", changedRev)
+			logg.LogTo("CHECKERSBOT", "Game doc changedRev: %v team %v", changedRev, game.ourTeamName())
 			if game.lastGameDocRev == "" || changedRev != game.lastGameDocRev {
 				gameDocChanged = true
 				game.lastGameDocRev = changedRev
-				logg.LogTo("CHECKERSBOT", "Game changed, set new changeRev to: %v", changedRev)
+				logg.LogTo("CHECKERSBOT", "Game changed, set new changeRev to: %v team: %v", changedRev, game.ourTeamName())
 
 			}
 		}
