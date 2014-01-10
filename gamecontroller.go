@@ -68,33 +68,85 @@ func (game *Game) GameLoop() {
 
 	curSinceValue := "0"
 
+	// buffered channel is hackish workaround for cases where the
+	// it was missing revisions from the changes feed because
+	// the select staement was blocked on processing previous changes.
+	changesChan := make(chan Changes, 10)
+
+	// buffered channel is hackish workaround for essentially a deadlock
+	// where the thing trying to write to the closeChan is blocked because
+	// this goroutine is not reading from it, because its blocked on the
+	// call to changesChan <- changes
+	closeChan := make(chan bool, 10)
+
 	handleChange := func(reader io.Reader) string {
+		logg.LogTo("CHECKERSBOT", "handleChange() callback called. team %v: curSinceValue: %v.  game: %p", game.ourTeamName(), curSinceValue, game)
 		changes := decodeChanges(reader)
-		shouldQuit := game.handleChanges(changes)
-		if shouldQuit {
+
+		changesChan <- changes // TODO: put this in select ?
+		select {
+		case _ = <-closeChan:
+			logg.LogTo("CHECKERSBOT", "Got msg on closeChan, returning -1. team %v: %v", game.ourTeamName(), curSinceValue)
 			return "-1" // causes Changes() to return
-		} else {
+		default:
 			curSinceValue = getNextSinceValue(curSinceValue, changes)
 			if game.feedType == NORMAL {
 				time.Sleep(time.Second * 1)
 			}
 			logg.LogTo("CHECKERSBOT", "New sinceValue for team %v: %v", game.ourTeamName(), curSinceValue)
 			return curSinceValue
+
 		}
 	}
 
-	options := Changes{"since": curSinceValue}
-	if game.feedType == LONGPOLL {
-		options["feed"] = "longpoll"
+	go func() {
+		options := Changes{"since": curSinceValue}
+		if game.feedType == LONGPOLL {
+			options["feed"] = "longpoll"
+		}
+		game.db.Changes(handleChange, options)
+		logg.LogTo("CHECKERSBOT", "game.db.Changes() finished. team %v: %v", game.ourTeamName(), curSinceValue)
+
+	}()
+
+	movesChan := make(chan ValidMove)
+
+	shouldQuit := false
+
+	for {
+		select {
+		case changes := <-changesChan:
+			logg.LogTo("CHECKERSBOT", "Got changes from changesChan, handle it. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
+			shouldQuit = game.handleChanges(changes, movesChan)
+			logg.LogTo("CHECKERSBOT", "Done handle changes from changesChan. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
+			if shouldQuit {
+				logg.LogTo("CHECKERSBOT", "shouldQuit == true. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
+				closeChan <- true
+				logg.LogTo("CHECKERSBOT", "sent true to closeChan. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
+			}
+		case bestMove := <-movesChan:
+			logg.LogTo("CHECKERSBOT", "%v thinker returned move, sending vote", game.ourTeamName())
+			outgoingVote := game.OutgoingVoteFromMove(bestMove)
+			game.PostChosenMove(outgoingVote)
+			logg.LogTo("CHECKERSBOT", "%v done sending vote", game.ourTeamName())
+
+		}
+
+		if shouldQuit {
+			logg.LogTo("CHECKERSBOT", "GAME_LOOP_FINISHED.  break out of for loop. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
+			break
+		}
+
 	}
-	game.db.Changes(handleChange, options)
+
+	logg.LogTo("CHECKERSBOT", "GAME_LOOP_FINISHED .. last line. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
 
 }
 
 // Given a list of changes, we only care if the game doc has changed.
 // If it has changed, and it's our turn to make a move, then call
 // the embedded Thinker to make a move or abort the game.
-func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
+func (game *Game) handleChanges(changes Changes, movesChan chan ValidMove) (shouldQuit bool) {
 	msg := fmt.Sprintf("Handle changes called for %v", game.ourTeamName())
 	logg.LogTo("CHECKERSBOT", msg)
 
@@ -102,12 +154,21 @@ func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
 	gameDocChanged := game.hasGameDocChanged(changes)
 	if gameDocChanged {
 		gameState, err := game.fetchLatestGameState()
+		msg := fmt.Sprintf("Fetched latest gameState. team %v.  Game state rev: %v", game.ourTeamName(), gameState.Rev)
+		logg.LogTo("CHECKERSBOT", msg)
+
 		if err != nil {
 			logg.LogError(err)
 			msg := fmt.Sprintf("Due to error fetching game state team %v quitting.  Game state: %v", game.ourTeamName(), gameState)
 			logg.LogTo("CHECKERSBOT", msg)
 			shouldQuit = true
 			return
+		}
+
+		if game.finished(gameState) {
+			msg := fmt.Sprintf("Game is finished. team %v.  Game state: %v", game.ourTeamName(), gameState)
+			logg.LogTo("CHECKERSBOT", msg)
+
 		}
 
 		game.updateUserGameNumberCasLoop(gameState)
@@ -127,15 +188,16 @@ func (game *Game) handleChanges(changes Changes) (shouldQuit bool) {
 		}
 
 		logg.LogTo("CHECKERSBOT", "Call %v thinker", game.ourTeamName())
-		bestMove, ok := game.thinker.Think(gameState)
 
-		if ok {
-			logg.LogTo("CHECKERSBOT", "%v thinker returned move, sending vote", game.ourTeamName())
-			outgoingVote := game.OutgoingVoteFromMove(bestMove)
-			game.PostChosenMove(outgoingVote)
-		} else {
-			logg.LogTo("CHECKERSBOT", "%v thinker returned not ok", game.ourTeamName())
-		}
+		go func() {
+			bestMove, ok := game.thinker.Think(gameState)
+			if ok {
+				movesChan <- bestMove
+
+			} else {
+				logg.LogTo("CHECKERSBOT", "%v thinker returned not ok", game.ourTeamName())
+			}
+		}()
 
 	}
 	return
@@ -163,7 +225,7 @@ func (game Game) finished(gameState GameState) bool {
 	logg.LogTo("CHECKERSBOT", "game.finished() returning: %v.  team: %v", finished, game.ourTeamName())
 	if finished {
 		logg.LogTo("CHECKERSBOT", "game.finished() gamestate: %v.  team: %v", gameState, game.ourTeamName())
-		logg.LogTo("CHECKERSBOT", "wining team: %v", gameState.WinningTeam.String())
+		logg.LogTo("CHECKERSBOT", "wining team: %v.  ourTeam: %v", gameState.WinningTeam.String(), game.ourTeamName())
 		logg.LogTo("CHECKERSBOT", "game #: %v", gameState.Number)
 	}
 	return finished
