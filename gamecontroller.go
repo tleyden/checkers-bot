@@ -7,7 +7,9 @@ import (
 	"github.com/nu7hatch/gouuid"
 	"github.com/tleyden/go-couch"
 	"io"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -51,6 +53,8 @@ type Game struct {
 	feedType        FeedType
 	serverUrl       string
 	lastGameDocRev  string
+	isThinking      bool
+	isThinkingMutex sync.Mutex
 }
 
 type Changes map[string]interface{}
@@ -81,6 +85,7 @@ func (game *Game) GameLoop() {
 
 	handleChange := func(reader io.Reader) string {
 		logg.LogTo("CHECKERSBOT", "handleChange() callback called. team %v: curSinceValue: %v.  game: %p", game.ourTeamName(), curSinceValue, game)
+		logg.LogTo("CHECKERSBOT", "# of goroutines %v", runtime.NumGoroutine())
 		changes := decodeChanges(reader)
 
 		changesChan <- changes // TODO: put this in select ?
@@ -187,17 +192,28 @@ func (game *Game) handleChanges(changes Changes, movesChan chan ValidMove) (shou
 			return
 		}
 
-		logg.LogTo("CHECKERSBOT", "Call %v thinker", game.ourTeamName())
+		game.isThinkingMutex.Lock()
+		if !game.isThinking {
+			logg.LogTo("CHECKERSBOT", "Call %v thinker", game.ourTeamName())
+			game.isThinking = true
+			go func() {
+				bestMove, ok := game.thinker.Think(gameState)
+				logg.LogTo("CHECKERSBOT", "%v thinker found a move", game.ourTeamName())
+				game.isThinkingMutex.Lock()
+				game.isThinking = false
+				game.isThinkingMutex.Unlock()
+				if ok {
+					movesChan <- bestMove
 
-		go func() {
-			bestMove, ok := game.thinker.Think(gameState)
-			if ok {
-				movesChan <- bestMove
+				} else {
+					logg.LogTo("CHECKERSBOT", "%v thinker returned not ok", game.ourTeamName())
+				}
+			}()
 
-			} else {
-				logg.LogTo("CHECKERSBOT", "%v thinker returned not ok", game.ourTeamName())
-			}
-		}()
+		} else {
+			logg.LogTo("CHECKERSBOT", "Not claling %v thinker, already thinking in progress", game.ourTeamName())
+		}
+		game.isThinkingMutex.Unlock()
 
 	}
 	return
