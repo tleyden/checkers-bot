@@ -128,6 +128,24 @@ func (game *Game) GameLoop() {
 				logg.LogTo("CHECKERSBOT", "shouldQuit == true. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
 				closeChan <- true
 				logg.LogTo("CHECKERSBOT", "sent true to closeChan. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
+
+				// fix attempt for crash.  my theory is that since there
+				// is still a thinker running when we exit the main
+				// loop, things break.
+				for {
+					game.isThinkingMutex.Lock()
+					if game.isThinking {
+						game.isThinkingMutex.Unlock()
+						logg.LogTo("CHECKERSBOT", "thinker still thinking, sleep 1 second. team %v", game.ourTeamName())
+						time.Sleep(1 * time.Second)
+					} else {
+						logg.LogTo("CHECKERSBOT", "thinker done thinking, call break. team %v", game.ourTeamName())
+						game.isThinkingMutex.Unlock()
+						break
+					}
+
+				}
+
 			}
 		case bestMove := <-movesChan:
 			logg.LogTo("CHECKERSBOT", "%v thinker returned move, sending vote", game.ourTeamName())
