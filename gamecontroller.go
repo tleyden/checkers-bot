@@ -55,12 +55,14 @@ type Game struct {
 	lastGameDocRev  string
 	isThinking      bool
 	isThinkingMutex sync.Mutex
+	isThinkingCond  *sync.Cond
 }
 
 type Changes map[string]interface{}
 
 func NewGame(ourTeamId TeamType, thinker Thinker) *Game {
 	game := &Game{ourTeamId: ourTeamId, thinker: thinker}
+	game.isThinkingCond = sync.NewCond(&game.isThinkingMutex)
 	return game
 }
 
@@ -81,27 +83,29 @@ func (game *Game) GameLoop() {
 	// where the thing trying to write to the closeChan is blocked because
 	// this goroutine is not reading from it, because its blocked on the
 	// call to changesChan <- changes
-	closeChan := make(chan bool, 10)
+	closeChan := make(chan bool)
 
 	handleChange := func(reader io.Reader) string {
+		select {
+		case <-closeChan:
+			logg.LogTo("CHECKERSBOT", "Got msg on closeChan, returning -1. team %v: %v", game.ourTeamName(), curSinceValue)
+			return "-1" // causes Changes() to return
+		default:
+		}
+
 		logg.LogTo("CHECKERSBOT", "handleChange() callback called. team %v: curSinceValue: %v.  game: %p", game.ourTeamName(), curSinceValue, game)
 		logg.LogTo("CHECKERSBOT", "# of goroutines %v", runtime.NumGoroutine())
 		changes := decodeChanges(reader)
 
 		changesChan <- changes // TODO: put this in select ?
-		select {
-		case _ = <-closeChan:
-			logg.LogTo("CHECKERSBOT", "Got msg on closeChan, returning -1. team %v: %v", game.ourTeamName(), curSinceValue)
-			return "-1" // causes Changes() to return
-		default:
-			curSinceValue = getNextSinceValue(curSinceValue, changes)
-			if game.feedType == NORMAL {
-				time.Sleep(time.Second * 1)
-			}
-			logg.LogTo("CHECKERSBOT", "New sinceValue for team %v: %v", game.ourTeamName(), curSinceValue)
-			return curSinceValue
 
+		curSinceValue = getNextSinceValue(curSinceValue, changes)
+		if game.feedType == NORMAL {
+			time.Sleep(time.Second * 1)
 		}
+		logg.LogTo("CHECKERSBOT", "New sinceValue for team %v: %v", game.ourTeamName(), curSinceValue)
+		return curSinceValue
+
 	}
 
 	go func() {
@@ -121,31 +125,26 @@ func (game *Game) GameLoop() {
 	for {
 		select {
 		case changes := <-changesChan:
+
+			// empty channel buffer, only process the latest (todo: move to function)
+		consume:
+			for {
+
+				select {
+				case changes = <-changesChan:
+				default:
+					break consume
+				}
+			}
+
 			logg.LogTo("CHECKERSBOT", "Got changes from changesChan, handle it. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
 			shouldQuit = game.handleChanges(changes, movesChan)
 			logg.LogTo("CHECKERSBOT", "Done handle changes from changesChan. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
 			if shouldQuit {
 				logg.LogTo("CHECKERSBOT", "shouldQuit == true. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
-				closeChan <- true
+				close(closeChan)
 				logg.LogTo("CHECKERSBOT", "sent true to closeChan. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
-
-				// fix attempt for crash.  my theory is that since there
-				// is still a thinker running when we exit the main
-				// loop, things break.
-				for {
-					game.isThinkingMutex.Lock()
-					if game.isThinking {
-						game.isThinkingMutex.Unlock()
-						logg.LogTo("CHECKERSBOT", "thinker still thinking, sleep 1 second. team %v", game.ourTeamName())
-						time.Sleep(1 * time.Second)
-					} else {
-						logg.LogTo("CHECKERSBOT", "thinker done thinking, call break. team %v", game.ourTeamName())
-						game.isThinkingMutex.Unlock()
-						break
-					}
-
-				}
-
+				game.waitForThinkerToFinish()
 			}
 		case bestMove := <-movesChan:
 			logg.LogTo("CHECKERSBOT", "%v thinker returned move, sending vote", game.ourTeamName())
@@ -163,6 +162,30 @@ func (game *Game) GameLoop() {
 	}
 
 	logg.LogTo("CHECKERSBOT", "GAME_LOOP_FINISHED .. last line. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
+
+}
+
+/*
+fix attempt for crash.  my theory is that since there
+is still a thinker running when we exit the main
+loop, things break.  basically since different checkerlution
+instances can share the same pointer to a cortex, (see
+checkurlution_scape.FitnessAgainst()), you can end up with
+the situation where:
+- cortexA is passed to checkerlution1
+- checkerlution1 kicks off long running minimax search with cortexA
+- checkerlution1 finishes game (minimax search still pending)
+- checkerlution2 is created, passed cortexA
+- cortexA.init() is called, sync channels reset)
+- crash with timed out waiting for actuator panic
+*/
+func (game *Game) waitForThinkerToFinish() {
+
+	game.isThinkingMutex.Lock()
+	defer game.isThinkingMutex.Unlock()
+	for !game.isThinking {
+		game.isThinkingCond.Wait()
+	}
 
 }
 
@@ -218,7 +241,8 @@ func (game *Game) handleChanges(changes Changes, movesChan chan ValidMove) (shou
 				bestMove, ok := game.thinker.Think(gameState)
 				logg.LogTo("CHECKERSBOT", "%v thinker found a move", game.ourTeamName())
 				game.isThinkingMutex.Lock()
-				game.isThinking = false
+				game.isThinking = false // TODO: use waitgroup
+				game.isThinkingCond.Broadcast()
 				game.isThinkingMutex.Unlock()
 				if ok {
 					movesChan <- bestMove
