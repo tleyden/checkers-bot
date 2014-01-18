@@ -126,17 +126,6 @@ func (game *Game) GameLoop() {
 		select {
 		case changes := <-changesChan:
 
-			// empty channel buffer, only process the latest (todo: move to function)
-		consume:
-			for {
-
-				select {
-				case changes = <-changesChan:
-				default:
-					break consume
-				}
-			}
-
 			logg.LogTo("CHECKERSBOT", "Got changes from changesChan, handle it. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
 			shouldQuit = game.handleChanges(changes, movesChan)
 			logg.LogTo("CHECKERSBOT", "Done handle changes from changesChan. team %v: curSinceValue: %v", game.ourTeamName(), curSinceValue)
