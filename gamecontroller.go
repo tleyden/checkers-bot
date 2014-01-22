@@ -26,6 +26,15 @@ const (
 	BLUE_TEAM
 )
 
+func (t TeamType) Opponent() TeamType {
+	switch t {
+	case RED_TEAM:
+		return BLUE_TEAM
+	default:
+		return RED_TEAM
+	}
+}
+
 func (t TeamType) String() string {
 	switch t {
 	case RED_TEAM:
