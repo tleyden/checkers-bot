@@ -172,7 +172,7 @@ func (game *Game) waitForThinkerToFinish() {
 
 	game.isThinkingMutex.Lock()
 	defer game.isThinkingMutex.Unlock()
-	for !game.isThinking {
+	for game.isThinking {
 		game.isThinkingCond.Wait()
 	}
 
