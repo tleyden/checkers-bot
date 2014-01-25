@@ -11,54 +11,92 @@ type CheckersBotFlags struct {
 	RandomDelayBeforeMove int
 }
 
-func ParseCmdLine() (checkersBotFlags CheckersBotFlags) {
+type CheckersBotRawFlags struct {
+	TeamString            string
+	SyncGatewayUrl        string
+	FeedString            string
+	RandomDelayBeforeMove int
+}
 
-	checkersBotFlags = CheckersBotFlags{}
+func GetCheckersBotRawFlags() *CheckersBotRawFlags {
 
-	var teamString = flag.String(
+	checkersBotRawFlags := CheckersBotRawFlags{}
+
+	flag.StringVar(
+		&checkersBotRawFlags.TeamString,
 		"team",
 		"NO_DEFAULT",
 		"The team, either 'RED' or 'BLUE'",
 	)
-	var syncGatewayUrlPtr = flag.String(
+
+	flag.StringVar(
+		&checkersBotRawFlags.SyncGatewayUrl,
 		"syncGatewayUrl",
 		"http://localhost:4984/checkers",
 		"The server URL, eg: http://foo.com:4984/checkers",
 	)
-	var feedTypeStr = flag.String(
+
+	flag.StringVar(
+		&checkersBotRawFlags.FeedString,
 		"feed",
 		"longpoll",
 		"The feed type: longpoll | normal",
 	)
-	var randomDelayBeforeMove = flag.Int(
+
+	flag.IntVar(
+		&checkersBotRawFlags.RandomDelayBeforeMove,
 		"randomDelayBeforeMove",
 		0,
 		"The max random delay before moving in seconds.  0 to disable it",
 	)
 
-	flag.Parse()
+	return &checkersBotRawFlags
 
-	if *teamString == "BLUE" {
+}
+
+func (rawFlags *CheckersBotRawFlags) GetCheckersBotFlags() CheckersBotFlags {
+
+	checkersBotFlags := CheckersBotFlags{}
+
+	if rawFlags.TeamString == "BLUE" {
 		checkersBotFlags.Team = BLUE_TEAM
-	} else if *teamString == "RED" {
+	} else if rawFlags.TeamString == "RED" {
 		checkersBotFlags.Team = RED_TEAM
 	} else {
 		flag.PrintDefaults()
 		panic("Invalid command line args given")
 	}
 
-	if syncGatewayUrlPtr == nil {
+	if len(rawFlags.SyncGatewayUrl) == 0 {
+		flag.PrintDefaults()
+		panic("Invalid command line args given")
+	} else {
+		checkersBotFlags.SyncGatewayUrl = rawFlags.SyncGatewayUrl
+	}
+
+	if rawFlags.FeedString == "longpoll" {
+		checkersBotFlags.FeedType = LONGPOLL
+	} else if rawFlags.FeedString == "normal" {
+		checkersBotFlags.FeedType = NORMAL
+	} else {
 		flag.PrintDefaults()
 		panic("Invalid command line args given")
 	}
 
-	if *feedTypeStr == "longpoll" {
-		checkersBotFlags.FeedType = LONGPOLL
-	} else if *feedTypeStr == "normal" {
-		checkersBotFlags.FeedType = NORMAL
-	}
+	checkersBotFlags.RandomDelayBeforeMove = rawFlags.RandomDelayBeforeMove
 
-	checkersBotFlags.RandomDelayBeforeMove = *randomDelayBeforeMove
-	checkersBotFlags.SyncGatewayUrl = *syncGatewayUrlPtr
+	return checkersBotFlags
+
+}
+
+func ParseCmdLine() (checkersBotFlags CheckersBotFlags) {
+
+	checkersBotRawFlags := GetCheckersBotRawFlags()
+
+	flag.Parse()
+
+	checkersBotFlags = checkersBotRawFlags.GetCheckersBotFlags()
+
 	return
+
 }
