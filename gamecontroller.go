@@ -81,7 +81,7 @@ func (game *Game) GameLoop() {
 
 	game.InitGame()
 
-	curSinceValue := "0"
+	curSinceValue := int64(0)
 
 	// buffered channel is hackish workaround for cases where the
 	// it was missing revisions from the changes feed because
@@ -94,11 +94,11 @@ func (game *Game) GameLoop() {
 	// call to changesChan <- changes
 	closeChan := make(chan bool)
 
-	handleChange := func(reader io.Reader) string {
+	handleChange := func(reader io.Reader) int64 {
 		select {
 		case <-closeChan:
 			logg.LogTo("CHECKERSBOT", "Got msg on closeChan, returning -1. team %v: %v", game.ourTeamName(), curSinceValue)
-			return "-1" // causes Changes() to return
+			return -1 // causes Changes() to return
 		default:
 		}
 
@@ -108,6 +108,7 @@ func (game *Game) GameLoop() {
 
 		changesChan <- changes // TODO: put this in select ?
 
+		logg.LogTo("CHECKERSBOT", "curSinceValue: %v changes: %v", curSinceValue, changes)
 		curSinceValue = getNextSinceValue(curSinceValue, changes)
 		if game.feedType == NORMAL {
 			time.Sleep(time.Second * 1)
@@ -492,14 +493,7 @@ func (game *Game) hasGameDocChanged(changes Changes) bool {
 		docIdRaw := changeResult["id"]
 		docId := docIdRaw.(string)
 		if strings.Contains(docId, GAME_DOC_ID) {
-			changedRev := getChangedRev(changeResult)
-			logg.LogTo("CHECKERSBOT", "Game doc changedRev: %v team %v", changedRev, game.ourTeamName())
-			if game.lastGameDocRev == "" || changedRev != game.lastGameDocRev {
-				gameDocChanged = true
-				game.lastGameDocRev = changedRev
-				logg.LogTo("CHECKERSBOT", "Game changed, set new changeRev to: %v team: %v", changedRev, game.ourTeamName())
-
-			}
+			gameDocChanged = true
 		}
 	}
 	return gameDocChanged
@@ -538,13 +532,21 @@ func decodeChanges(reader io.Reader) Changes {
 	return changes
 }
 
-func getNextSinceValue(curSinceValue string, changes Changes) string {
+func getNextSinceValue(curSinceValue int64, changes Changes) int64 {
 	lastSeq := changes["last_seq"]
-	if lastSeq != nil {
-		lastSeqAsString := lastSeq.(string)
-		if len(lastSeqAsString) > 0 {
-			return lastSeqAsString
-		}
+	if lastSeq == nil {
+		return curSinceValue
+	}
+	lastSeqInt64 := int64(lastSeq.(float64))
+	logg.LogTo("CHECKERSBOT", "lastSeq: %v", lastSeq)
+	switch lastSeq.(type) {
+	case float64:
+		logg.LogTo("CHECKERSBOT", "lastSeq type is float64")
+	default:
+		logg.LogTo("CHECKERSBOT", "lastSeq type is something else")
+	}
+	if lastSeqInt64 != 0 {
+		return lastSeqInt64
 	}
 
 	return curSinceValue
@@ -565,13 +567,13 @@ func (game *Game) Turn() int {
 // Wait until the game number increments
 func (game *Game) WaitForNextGame() {
 
-	curSinceValue := "0"
+	curSinceValue := int64(0)
 
-	handleChange := func(reader io.Reader) string {
+	handleChange := func(reader io.Reader) int64 {
 		changes := decodeChanges(reader)
 		shouldQuit := game.handleChangesWaitForNextGame(changes)
 		if shouldQuit {
-			return "-1" // causes Changes() to return
+			return -1 // causes Changes() to return
 		} else {
 			curSinceValue = getNextSinceValue(curSinceValue, changes)
 			time.Sleep(time.Second * 5)
