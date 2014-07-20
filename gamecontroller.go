@@ -3,14 +3,15 @@ package checkersbot
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/couchbaselabs/logg"
-	"github.com/nu7hatch/gouuid"
-	"github.com/tleyden/go-couch"
 	"io"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/couchbaselabs/logg"
+	"github.com/nu7hatch/gouuid"
+	"github.com/tleyden/go-couch"
 )
 
 const (
@@ -81,7 +82,7 @@ func (game *Game) GameLoop() {
 
 	game.InitGame()
 
-	curSinceValue := int64(0)
+	curSinceValue := "0"
 
 	// buffered channel is hackish workaround for cases where the
 	// it was missing revisions from the changes feed because
@@ -94,11 +95,11 @@ func (game *Game) GameLoop() {
 	// call to changesChan <- changes
 	closeChan := make(chan bool)
 
-	handleChange := func(reader io.Reader) int64 {
+	handleChange := func(reader io.Reader) interface{} {
 		select {
 		case <-closeChan:
 			logg.LogTo("CHECKERSBOT", "Got msg on closeChan, returning -1. team %v: %v", game.ourTeamName(), curSinceValue)
-			return -1 // causes Changes() to return
+			return nil // causes Changes() to return
 		default:
 		}
 
@@ -532,21 +533,14 @@ func decodeChanges(reader io.Reader) Changes {
 	return changes
 }
 
-func getNextSinceValue(curSinceValue int64, changes Changes) int64 {
+func getNextSinceValue(curSinceValue string, changes Changes) string {
 	lastSeq := changes["last_seq"]
 	if lastSeq == nil {
 		return curSinceValue
 	}
-	lastSeqInt64 := int64(lastSeq.(float64))
-	logg.LogTo("CHECKERSBOT", "lastSeq: %v", lastSeq)
-	switch lastSeq.(type) {
-	case float64:
-		logg.LogTo("CHECKERSBOT", "lastSeq type is float64")
-	default:
-		logg.LogTo("CHECKERSBOT", "lastSeq type is something else")
-	}
-	if lastSeqInt64 != 0 {
-		return lastSeqInt64
+	lastSeqStr := fmt.Sprintf("%v", lastSeq) // convert to string if it's an int
+	if lastSeqStr != "0" {
+		return lastSeqStr
 	}
 
 	return curSinceValue
@@ -567,13 +561,13 @@ func (game *Game) Turn() int {
 // Wait until the game number increments
 func (game *Game) WaitForNextGame() {
 
-	curSinceValue := int64(0)
+	curSinceValue := "0"
 
-	handleChange := func(reader io.Reader) int64 {
+	handleChange := func(reader io.Reader) interface{} {
 		changes := decodeChanges(reader)
 		shouldQuit := game.handleChangesWaitForNextGame(changes)
 		if shouldQuit {
-			return -1 // causes Changes() to return
+			return nil // causes Changes() to return
 		} else {
 			curSinceValue = getNextSinceValue(curSinceValue, changes)
 			time.Sleep(time.Second * 5)
